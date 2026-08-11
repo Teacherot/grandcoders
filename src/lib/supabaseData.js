@@ -137,7 +137,22 @@ export async function getAgentsFromSupabaseLive() {
 }
 
 function sanitizeAgentPayload(payload = {}) {
-  const allowed = ['id', 'email', 'full_name', 'code', 'role', 'store_name', 'commission_rate', 'active', 'created_at', 'created_date'];
+  const allowed = [
+    'id',
+    'email',
+    'full_name',
+    'phone',
+    'region',
+    'status',
+    'notes',
+    'code',
+    'role',
+    'store_name',
+    'commission_rate',
+    'active',
+    'created_at',
+    'created_date',
+  ];
   const output = {};
 
   allowed.forEach((key) => {
