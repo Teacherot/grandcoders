@@ -1,0 +1,74 @@
+{
+  "agents": {
+    "demo-agent": {
+      "id": "demo-agent",
+      "name": "Demo Agent",
+      "balance": 220,
+      "transactions": [
+        {
+          "id": "tx-topup-1",
+          "type": "top_up",
+          "amount": 200,
+          "notes": "Mobile money top-up",
+          "created_date": "2026-08-11T10:43:13.275Z",
+          "balance_after": 200
+        },
+        {
+          "id": "tx-adjustment-1",
+          "type": "adjustment",
+          "amount": 20,
+          "notes": "Commission converted to wallet",
+          "created_date": "2026-08-11T10:43:13.275Z",
+          "balance_after": 220
+        }
+      ],
+      "momo_transactions": [
+        {
+          "id": "momo-1",
+          "transaction_id": "MMO-1001",
+          "amount": 200,
+          "status": "claimed",
+          "network": "MTN",
+          "sender_number": "0244000000",
+          "created_date": "2026-08-11T10:43:13.275Z"
+        }
+      ],
+      "orders": [
+        {
+          "id": "order-1",
+          "amount": 150,
+          "status": "completed",
+          "source": "store",
+          "created_date": "2026-08-11T10:43:13.275Z",
+          "package_name": "Data bundle"
+        },
+        {
+          "id": "order-2",
+          "amount": 75,
+          "status": "pending",
+          "source": "store",
+          "created_date": "2026-08-11T10:43:13.275Z",
+          "package_name": "Data bundle"
+        }
+      ],
+      "withdrawals": [
+        {
+          "id": "wd-1",
+          "amount": 25,
+          "method": "momo",
+          "account_info": "0244000000",
+          "status": "paid",
+          "created_date": "2026-08-11T10:43:13.275Z"
+        },
+        {
+          "id": "wd-2",
+          "amount": 15,
+          "method": "bank",
+          "account_info": "123456789",
+          "status": "pending",
+          "created_date": "2026-08-11T10:43:13.275Z"
+        }
+      ]
+    }
+  }
+}

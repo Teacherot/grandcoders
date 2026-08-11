@@ -16,6 +16,7 @@ import BulkPasteOrders from "@/components/agents/BulkPasteOrders";
 import { nextCode, nextCodes } from "@/lib/shortCode";
 import { pushOrderToGmpl, getAgentBalance } from "@/lib/gmpl";
 import { toast } from "@/components/ui/use-toast";
+import { getBackendHealth } from "@/lib/backend-api";
 
 const cedi = (n) => `GH₵ ${Number(n || 0).toFixed(2)}`;
 
@@ -28,15 +29,27 @@ export default function AgentDashboard() {
   const [bulkOpen, setBulkOpen] = useState(false);
   const [packages, setPackages] = useState([]);
   const [prices, setPrices] = useState([]);
+  const [backendStatus, setBackendStatus] = useState(null);
+  const [backendError, setBackendError] = useState("");
 
   useEffect(() => {
     if (!agent) return;
+
+    let cancelled = false;
 
     const loadOrders = () => base44.entities.Order.filter({ agent_id: agent.id }, "-created_date", 200).then(setOrders);
     loadOrders();
     base44.functions.invoke("agentSelfService", {}).then((r) => setWallet(r?.data || null)).catch(() => {});
     base44.entities.Package.list().then(setPackages);
     base44.entities.AgentPrice.filter({ agent_id: agent.id, active: true }).then(setPrices);
+
+    getBackendHealth()
+      .then((data) => {
+        if (!cancelled) setBackendStatus(data);
+      })
+      .catch((error) => {
+        if (!cancelled) setBackendError(error?.message || "Backend unavailable");
+      });
 
     const unsub = base44.entities.Order.subscribe((ev) => {
       if (ev.type !== "update" && ev.type !== "create") return;
@@ -46,6 +59,7 @@ export default function AgentDashboard() {
     });
 
     return () => {
+      cancelled = true;
       if (typeof unsub === "function") unsub();
     };
   }, [agent?.id]);
@@ -107,6 +121,11 @@ export default function AgentDashboard() {
           </div>
         }
       />
+      <div className="mb-4 flex flex-wrap gap-2">
+        <div className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${backendStatus ? "bg-emerald-50 text-emerald-700" : backendError ? "bg-amber-50 text-amber-700" : "bg-slate-100 text-slate-600"}`}>
+          {backendStatus ? `Backend online · ${backendStatus.service}` : backendError ? "Backend check unavailable" : "Checking backend…"}
+        </div>
+      </div>
       <NotificationsPopup />
       <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-5 mb-8">
         <StatCard label="Total orders" value={list.length} />

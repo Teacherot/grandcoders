@@ -33,6 +33,23 @@ export default function RoleShell() {
     let active = true;
     (async () => {
       if (!user?.email) { setLoading(false); return; }
+
+      const isDemoUser = user?.id === "demo-agent" || user?.email === "agent@example.com";
+      if (isDemoUser) {
+        if (active) {
+          setAgent({
+            id: user.id,
+            email: user.email,
+            full_name: user.full_name || "Demo Agent",
+            store_name: user.store_name || "Demo Store",
+            commission_rate: user.commission_rate || 10,
+          });
+          setNeedsToken(false);
+          setLoading(false);
+        }
+        return;
+      }
+
       try {
         if (user.role === "admin") {
           if (active) { setAgent(null); setLoading(false); }

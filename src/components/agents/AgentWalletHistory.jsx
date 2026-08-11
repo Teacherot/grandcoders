@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import { base44 } from "@/api/base44Client";
 import { format } from "date-fns";
 import { ArrowUpRight, Smartphone } from "lucide-react";
 
@@ -10,9 +9,10 @@ export default function AgentWalletHistory() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    base44.functions
-      .invoke("agentSelfService", {})
-      .then((res) => setData(res?.data || null))
+    const agentId = localStorage.getItem('agent_id') || 'demo-agent';
+    fetch(`/api/agents/${agentId}/wallet-history`)
+      .then((res) => res.json())
+      .then((payload) => setData(payload || null))
       .finally(() => setLoading(false));
   }, []);
 

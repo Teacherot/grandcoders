@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,19 +18,18 @@ export default function StoreWithdrawals({ agent }) {
   const [converting, setConverting] = useState(false);
 
   const load = async () => {
-    const [o, w] = await Promise.all([
-      base44.entities.Order.filter({ agent_id: agent.id }, "-created_date", 500),
-      base44.entities.Withdrawal.filter({ agent_id: agent.id }, "-created_date", 100),
-    ]);
-    setOrders(o);
-    setWithdrawals(w);
+    const response = await fetch(`/api/agents/${agent.id}/payout-data`);
+    const payload = await response.json();
+    setOrders(payload?.orders || []);
+    setWithdrawals(payload?.withdrawals || []);
   };
 
   const loadWallet = async () => {
     setWalletLoading(true);
     try {
-      const res = await base44.functions.invoke("agentSelfService", {});
-      setWalletData(res?.data || null);
+      const response = await fetch(`/api/agents/${agent.id}/wallet-history`);
+      const payload = await response.json();
+      setWalletData(payload || null);
     } catch (error) {
       console.error("Could not load wallet balance", error);
     } finally {
@@ -39,28 +37,9 @@ export default function StoreWithdrawals({ agent }) {
     }
   };
 
-  const reloadWithdrawals = async () =>
-    setWithdrawals(await base44.entities.Withdrawal.filter({ agent_id: agent.id }, "-created_date", 100));
-
   useEffect(() => {
     load();
     loadWallet();
-
-    // Live-update the lists so the agent sees balance and payout status change
-    // as orders are placed and admin actions are completed.
-    const unsubOrders = base44.entities.Order.subscribe(() => {
-      load();
-      loadWallet();
-    });
-    const unsubWithdrawals = base44.entities.Withdrawal.subscribe(() => {
-      reloadWithdrawals();
-      loadWallet();
-    });
-
-    return () => {
-      unsubOrders?.();
-      unsubWithdrawals?.();
-    };
   }, [agent.id]);
 
   const earned = orders.filter((o) => o.status === "completed" && o.source === "store").reduce((s, o) => s + (o.amount || 0), 0) * (agent.commission_rate || 0) / 100;
@@ -73,9 +52,20 @@ export default function StoreWithdrawals({ agent }) {
     e.preventDefault();
     const amt = Number(form.amount);
     if (!amt || amt > available) return;
-    await base44.entities.Withdrawal.create({ agent_id: agent.id, agent_name: agent.full_name, amount: amt, method: form.method, account_info: form.account_info, status: "pending" });
+    const response = await fetch(`/api/agents/${agent.id}/withdrawals`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ amount: amt, method: form.method, account_info: form.account_info }),
+    });
+    const payload = await response.json();
+    if (!response.ok) {
+      toast({ variant: "destructive", title: "Could not create withdrawal", description: payload?.error || "Could not create withdrawal." });
+      return;
+    }
     setForm({ amount: "", method: "momo", account_info: "" });
     load();
+    loadWallet();
+    toast({ title: "Withdrawal requested", description: `GH₵ ${amt.toFixed(2)} is pending review.` });
   };
 
   const convert = async () => {
@@ -83,12 +73,21 @@ export default function StoreWithdrawals({ agent }) {
     if (!amt || amt <= 0 || amt > available) return;
     setConverting(true);
     try {
-      await base44.functions.invoke("convertCommissionToWallet", { amount: amt });
+      const response = await fetch(`/api/agents/${agent.id}/convert-commission`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: amt }),
+      });
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(payload?.error || "Could not convert commission.");
+      }
       toast({ title: "Commission converted", description: `GH₵ ${amt.toFixed(2)} moved to your wallet.` });
       setForm({ amount: "", method: "momo", account_info: "" });
       load();
+      loadWallet();
     } catch (e) {
-      toast({ variant: "destructive", title: "Could not convert", description: e?.response?.data?.error || e?.message || "Could not convert commission." });
+      toast({ variant: "destructive", title: "Could not convert", description: e?.message || "Could not convert commission." });
     } finally {
       setConverting(false);
     }

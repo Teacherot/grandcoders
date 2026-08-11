@@ -61,7 +61,7 @@ export default function AgentWalletOverview() {
         <div className="mt-3 rounded-xl border border-dashed border-border bg-background/60 p-4 text-sm">
           <div className="text-muted-foreground">Send Mobile Money to</div>
           <div className="mt-2 text-lg font-semibold tracking-tight">{data?.admin_momo_number || "Loading..."}</div>
-          <div className="text-xs text-muted-foreground">{data?.admin_momo_name || "GMPL Data Services"}</div>
+          <div className="text-xs text-muted-foreground">{data?.admin_momo_name || "GrandCoders"}</div>
         </div>
         <div className="mt-4 grid grid-cols-3 gap-2">
           {['₵100', '₵250', '₵500', '₵1000', '₵2500'].map((amount) => (

@@ -67,9 +67,10 @@ export default function MomoTopUp() {
     }
   };
 
-  const momoNumber = info?.admin_momo_number;
-  const momoName = info?.admin_momo_name;
-  const agentPhone = info?.agent_phone;
+  const momoNumber = info?.admin_momo_number || "0244000000";
+  const momoName = info?.admin_momo_name || "GrandCoders";
+  const agentPhone = info?.agent_phone || "0244000000";
+  const paymentReference = info?.agent_phone || "0244000000";
 
   return (
     <div className="rounded-2xl border border-border bg-card p-6">
@@ -107,11 +108,11 @@ export default function MomoTopUp() {
 
           {agentPhone ? (
             <div className="rounded-xl border border-[#1E6FE8]/30 bg-[#1E6FE8]/5 p-4">
-              <p className="text-xs font-medium text-muted-foreground mb-3">2. Use your registered number as the reference</p>
+              <p className="text-xs font-medium text-muted-foreground mb-3">2. Use this as the payment reference</p>
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-lg font-semibold tracking-tight">{agentPhone}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">Type this as the payment reference when sending.</p>
+                  <p className="text-lg font-semibold tracking-tight">{paymentReference}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Type this as the payment reference when sending for automatic credit.</p>
                 </div>
                 <Button variant="outline" size="sm" onClick={copyPhone}>
                   {copiedPhone ? <><Check className="w-3.5 h-3.5 mr-1.5" />Copied</> : <><Copy className="w-3.5 h-3.5 mr-1.5" />Copy</>}
