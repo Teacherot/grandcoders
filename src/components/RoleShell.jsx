@@ -50,6 +50,29 @@ export default function RoleShell() {
             const { data, error } = await supabase.from('agents').select('*').eq('email', user.email).limit(1);
             if (!error && data?.[0]) {
               profile = data[0];
+            } else if (!error) {
+              const fallbackAgent = {
+                id: user.id,
+                email: user.email,
+                full_name: user.full_name || user.email?.split('@')[0] || 'Agent',
+                role: 'agent',
+                status: 'active',
+                commission_rate: 10,
+                created_at: new Date().toISOString(),
+                created_date: new Date().toISOString(),
+              };
+
+              const { data: created, error: createError } = await supabase
+                .from('agents')
+                .insert(fallbackAgent)
+                .select()
+                .single();
+
+              if (!createError && created) {
+                profile = created;
+              } else {
+                profile = fallbackAgent;
+              }
             }
           } catch (profileError) {
             console.warn('Unable to resolve agent profile', profileError);
@@ -57,17 +80,35 @@ export default function RoleShell() {
         }
 
         if (active) {
-          setAgent(profile || null);
+          setAgent(
+            profile || {
+              id: user.id,
+              email: user.email,
+              full_name: user.full_name || user.email?.split('@')[0] || 'Agent',
+              role: 'agent',
+              status: 'active',
+              commission_rate: 10,
+            }
+          );
         }
       } catch (error) {
         console.warn('RoleShell initialization failed', error);
-        if (active) setAgent(null);
+        if (active) {
+          setAgent({
+            id: user?.id,
+            email: user?.email,
+            full_name: user?.full_name || user?.email?.split('@')[0] || 'Agent',
+            role: 'agent',
+            status: 'active',
+            commission_rate: 10,
+          });
+        }
       } finally {
         if (active) setLoading(false);
       }
     })();
     return () => { active = false; };
-  }, [user?.email, user?.role]);
+  }, [user?.id, user?.email, user?.full_name, user?.role]);
 
   const role = user?.role === "admin" ? "admin" : "agent";
 
