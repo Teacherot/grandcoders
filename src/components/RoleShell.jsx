@@ -1,11 +1,10 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { Outlet } from "react-router-dom";
-import { base44 } from "@/api/base44Client";
+import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/AuthContext";
 import Layout from "@/components/Layout";
 import AgentLayout from "@/components/AgentLayout";
 import AgentOrderNotifier from "@/components/agents/AgentOrderNotifier";
-import SignupTokenRequired from "@/components/SignupTokenRequired";
 
 const RoleContext = createContext({ role: "admin", agent: null, loading: true });
 
@@ -27,48 +26,31 @@ export default function RoleShell() {
   const { user } = useAuth();
   const [agent, setAgent] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [needsToken, setNeedsToken] = useState(false);
 
   useEffect(() => {
     let active = true;
     (async () => {
       if (!user?.email) { setLoading(false); return; }
 
-      const isDemoUser = user?.id === "demo-admin" || user?.email === "admin@example.com";
-      if (isDemoUser) {
-        if (active) {
-          setAgent(null);
-          setNeedsToken(false);
-          setLoading(false);
-        }
-        return;
-      }
-
       try {
         if (user.role === "admin") {
           if (active) { setAgent(null); setLoading(false); }
           return;
         }
-        // Established agents skip the sign-up gate entirely.
-        const agents = await base44.entities.Agent.filter({ email: user.email });
-        if (active) setAgent(agents[0] || null);
-        if (agents[0]) { if (active) setLoading(false); return; }
 
-        // New account: provision via ensureAgentAccount, which requires a valid
-        // sign-up token (or a pending pre-authorization). If it returns
-        // signup_required, show the token screen instead of the app.
-        try {
-          const res = await base44.functions.invoke("ensureAgentAccount", {});
-          if (active && res?.agent) setAgent(res.agent);
-        } catch (err) {
-          if (String(err?.message || "").includes("signup_required")) {
-            if (active) setNeedsToken(true);
-          } else {
-            throw err;
+        let profile = null;
+        if (supabase) {
+          const { data, error } = await supabase.from('agents').select('*').eq('email', user.email).limit(1);
+          if (!error && data?.[0]) {
+            profile = data[0];
           }
         }
+
+        if (active) {
+          setAgent(profile || null);
+        }
       } catch {
-        /* ignore */
+        if (active) setAgent(null);
       } finally {
         if (active) setLoading(false);
       }
@@ -77,10 +59,6 @@ export default function RoleShell() {
   }, [user?.email]);
 
   const role = user?.role === "admin" ? "admin" : "agent";
-
-  if (needsToken) {
-    return <SignupTokenRequired />;
-  }
 
   const Shell = role === "agent" ? AgentLayout : Layout;
 

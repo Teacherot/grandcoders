@@ -1,6 +1,33 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
+import { supabase } from '@/lib/supabaseClient';
 
 const AuthContext = createContext();
+
+const buildUserFromSession = async (sessionUser) => {
+  if (!sessionUser?.email) return null;
+
+  let profile = null;
+  try {
+    if (supabase) {
+      const { data, error } = await supabase.from('agents').select('*').eq('email', sessionUser.email).limit(1);
+      if (!error && data?.[0]) {
+        profile = data[0];
+      }
+    }
+  } catch (error) {
+    console.warn('Unable to load agent profile for auth user', error);
+  }
+
+  return {
+    id: sessionUser.id,
+    email: sessionUser.email,
+    full_name: profile?.full_name || sessionUser.user_metadata?.full_name || sessionUser.email.split('@')[0],
+    role: profile?.role || sessionUser.user_metadata?.role || 'agent',
+    store_name: profile?.store_name || '',
+    commission_rate: profile?.commission_rate || 10,
+    profile,
+  };
+};
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -9,48 +36,150 @@ export const AuthProvider = ({ children }) => {
   const [isLoadingPublicSettings, setIsLoadingPublicSettings] = useState(true);
   const [authError, setAuthError] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
-  const [appPublicSettings, setAppPublicSettings] = useState(null); // Contains only { id, public_settings }
+  const [appPublicSettings, setAppPublicSettings] = useState(null);
+
+  const syncAuthState = async () => {
+    if (!supabase) {
+      setIsLoadingAuth(false);
+      setIsLoadingPublicSettings(false);
+      setAuthChecked(true);
+      setAuthError({ type: 'auth_required', message: 'Supabase is not configured' });
+      setUser(null);
+      setIsAuthenticated(false);
+      setAppPublicSettings({ id: 'demo', public_settings: {} });
+      return;
+    }
+
+    try {
+      const { data: { session }, error } = await supabase.auth.getSession();
+      if (error) throw error;
+
+      if (session?.user) {
+        const nextUser = await buildUserFromSession(session.user);
+        setUser(nextUser);
+        setIsAuthenticated(true);
+        setAuthError(null);
+      } else {
+        setUser(null);
+        setIsAuthenticated(false);
+        setAuthError(null);
+      }
+    } catch (error) {
+      console.error('Auth sync failed', error);
+      setAuthError({ type: 'auth_required', message: error?.message || 'Unable to load auth state' });
+      setUser(null);
+      setIsAuthenticated(false);
+    } finally {
+      setIsLoadingAuth(false);
+      setIsLoadingPublicSettings(false);
+      setAuthChecked(true);
+      setAppPublicSettings({ id: 'live', public_settings: {} });
+    }
+  };
 
   useEffect(() => {
-    checkAppState();
+    let mounted = true;
+
+    const initialize = async () => {
+      await syncAuthState();
+      if (!mounted || !supabase) return;
+
+      const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, session) => {
+        if (!mounted) return;
+        if (session?.user) {
+          const nextUser = await buildUserFromSession(session.user);
+          setUser(nextUser);
+          setIsAuthenticated(true);
+          setAuthError(null);
+        } else {
+          setUser(null);
+          setIsAuthenticated(false);
+          setAuthError(null);
+        }
+        setIsLoadingAuth(false);
+        setAuthChecked(true);
+      });
+
+      return authListener?.subscription?.unsubscribe;
+    };
+
+    let unsubscribe = null;
+    initialize().then((cleanup) => {
+      unsubscribe = cleanup;
+    });
+
+    return () => {
+      mounted = false;
+      if (typeof unsubscribe === 'function') {
+        unsubscribe();
+      }
+    };
   }, []);
 
   const checkAppState = async () => {
-    setIsLoadingPublicSettings(false);
-    setIsLoadingAuth(false);
-    setIsAuthenticated(true);
-    setAuthChecked(true);
-    setUser({
-      id: 'demo-admin',
-      email: 'admin@example.com',
-      full_name: 'Demo Admin',
-      role: 'admin',
-      store_name: 'Demo Store',
-      commission_rate: 10,
-    });
-    setAppPublicSettings({ id: 'demo', public_settings: {} });
+    await syncAuthState();
   };
 
   const checkUserAuth = async () => {
-    setIsLoadingAuth(false);
-    setIsAuthenticated(true);
-    setAuthChecked(true);
-    setUser({
-      id: 'demo-admin',
-      email: 'admin@example.com',
-      full_name: 'Demo Admin',
-      role: 'admin',
-      store_name: 'Demo Store',
-      commission_rate: 10,
-    });
+    await syncAuthState();
   };
 
-  const logout = (shouldRedirect = true) => {
-    setUser(null);
-    setIsAuthenticated(false);
+  const login = async (email, password) => {
+    if (!supabase) {
+      throw new Error('Supabase is not configured');
+    }
+
+    setIsLoadingAuth(true);
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+
+    const nextUser = await buildUserFromSession(data?.user);
+    setUser(nextUser);
+    setIsAuthenticated(true);
     setAuthChecked(true);
-    if (shouldRedirect) {
-      window.location.href = '/login';
+    setAuthError(null);
+    setIsLoadingAuth(false);
+    setIsLoadingPublicSettings(false);
+    return data;
+  };
+
+  const register = async (email, password) => {
+    if (!supabase) {
+      throw new Error('Supabase is not configured');
+    }
+
+    setIsLoadingAuth(true);
+    const { data, error } = await supabase.auth.signUp({ email, password });
+    if (error) throw error;
+
+    if (data?.user) {
+      const nextUser = await buildUserFromSession(data.user);
+      setUser(nextUser);
+      setIsAuthenticated(Boolean(data.session));
+      setAuthChecked(true);
+      setAuthError(null);
+    }
+
+    setIsLoadingAuth(false);
+    setIsLoadingPublicSettings(false);
+    return data;
+  };
+
+  const logout = async (shouldRedirect = true) => {
+    try {
+      if (supabase) {
+        await supabase.auth.signOut();
+      }
+    } catch (error) {
+      console.error('Auth logout failed', error);
+    } finally {
+      setUser(null);
+      setIsAuthenticated(false);
+      setAuthChecked(true);
+      setAuthError(null);
+      if (shouldRedirect) {
+        window.location.href = '/login';
+      }
     }
   };
 
@@ -59,15 +188,17 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      isAuthenticated, 
+    <AuthContext.Provider value={{
+      user,
+      isAuthenticated,
       isLoadingAuth,
       isLoadingPublicSettings,
       authError,
       appPublicSettings,
       authChecked,
       logout,
+      login,
+      register,
       navigateToLogin,
       checkUserAuth,
       checkAppState
