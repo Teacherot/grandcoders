@@ -1,17 +1,9 @@
-import { base44 } from '@/api/base44Client';
 import { supabase } from '@/lib/supabaseClient';
 
 const toDateValue = (value) => value ?? new Date().toISOString();
 
 async function readTable(tableName, orderBy = 'created_date', fallbackEntityName = null) {
   if (!supabase) {
-    if (fallbackEntityName) {
-      try {
-        return await base44.entities[fallbackEntityName].list('-created_date', 500);
-      } catch (error) {
-        console.warn(`Base44 fallback failed for ${fallbackEntityName}:`, error);
-      }
-    }
     return [];
   }
 
@@ -19,20 +11,11 @@ async function readTable(tableName, orderBy = 'created_date', fallbackEntityName
     const { data, error } = await supabase.from(tableName).select('*').order(orderBy, { ascending: false });
     if (error) {
       console.warn(`Supabase ${tableName} read failed:`, error.message);
-      return fallbackEntityName ? fallbackList(fallbackEntityName) : [];
+      return [];
     }
     return data || [];
   } catch (error) {
     console.warn(`Supabase ${tableName} read failed:`, error);
-    return fallbackEntityName ? fallbackList(fallbackEntityName) : [];
-  }
-}
-
-async function fallbackList(entityName, limit = 500) {
-  try {
-    return await base44.entities[entityName].list('-created_date', limit);
-  } catch (error) {
-    console.warn(`Base44 fallback failed for ${entityName}:`, error);
     return [];
   }
 }
@@ -141,7 +124,7 @@ export async function deletePackageInSupabase(id) {
 
 export async function bulkUpdatePackagesInSupabase(items) {
   if (!supabase) {
-    return Promise.all(items.map((item) => base44.entities.Package.update(item.id, { active: item.active })));
+    throw new Error('Supabase client is not configured for packages');
   }
 
   const { error } = await supabase.from('packages').upsert(items.map((item) => ({ id: item.id, active: item.active })));
@@ -252,7 +235,7 @@ export async function getSettingsFromSupabase() {
 
 export async function saveSettingInSupabase(key, value, label) {
   if (!supabase) {
-    return base44.entities.Setting.create({ key, value, label });
+    throw new Error('Supabase client is not configured for settings');
   }
 
   const { data: existingRows, error: selectError } = await supabase.from('settings').select('*').eq('key', key).limit(1);

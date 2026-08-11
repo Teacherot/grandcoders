@@ -1,31 +1,32 @@
 import React, { useEffect, useState } from "react";
-import { base44 } from "@/api/base44Client";
 import { useRole } from "@/components/RoleShell";
 import PageHeader from "@/components/PageHeader";
 import ChatThread from "@/components/chat/ChatThread";
 import { toast } from "@/components/ui/use-toast";
+import { createChatMessageInSupabase, getChatMessagesFromSupabase, updateChatMessageInSupabase } from "@/lib/supabaseData";
 
 export default function Support() {
   const { agent } = useRole();
   const [messages, setMessages] = useState(null);
   const [sending, setSending] = useState(false);
 
-  const load = () => base44.entities.ChatMessage.filter({ agent_id: agent?.id }, "created_date", 500).then(setMessages);
+  const load = async () => {
+    const rows = await getChatMessagesFromSupabase().catch(() => []);
+    setMessages((rows || []).filter((m) => m.agent_id === agent?.id));
+  };
 
   useEffect(() => {
     if (!agent) return;
     load();
-    const unsub = base44.entities.ChatMessage.subscribe((event) => {
-      if (event?.data?.agent_id === agent.id) load();
-    });
-    return unsub;
+    const timer = setInterval(load, 12000);
+    return () => clearInterval(timer);
   }, [agent?.id]);
 
   useEffect(() => {
     if (!messages) return;
     messages
       .filter((m) => m.sender === "admin" && !m.read)
-      .forEach((m) => base44.entities.ChatMessage.update(m.id, { read: true }).catch(() => {}));
+      .forEach((m) => updateChatMessageInSupabase(m.id, { read: true }).catch(() => {}));
   }, [messages]);
 
   if (!agent) return null;
@@ -33,7 +34,7 @@ export default function Support() {
   const send = async (text, file) => {
     setSending(true);
     try {
-      await base44.entities.ChatMessage.create({
+      await createChatMessageInSupabase({
         agent_id: agent.id,
         agent_name: agent.full_name,
         agent_email: agent.email,

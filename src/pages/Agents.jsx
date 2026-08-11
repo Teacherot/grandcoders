@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import { base44 } from "@/api/base44Client";
 import { Plus, Trash2, Pencil, Phone, Mail, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -8,7 +7,7 @@ import StatusBadge from "@/components/StatusBadge";
 import AgentForm from "@/components/agents/AgentForm";
 import WalletTopUp from "@/components/agents/WalletTopUp";
 import { nextCode } from "@/lib/shortCode";
-import { createAgentInSupabase, deleteAgentInSupabase, getAgentWalletsFromSupabase, getAgentsFromSupabaseLive, updateAgentInSupabase } from "@/lib/supabaseData";
+import { createAgentInSupabase, deleteAgentInSupabase, getAgentWalletsFromSupabase, getAgentsFromSupabaseLive, getOrdersFromSupabase, updateAgentInSupabase } from "@/lib/supabaseData";
 
 export default function Agents() {
   const [agents, setAgents] = useState(null);
@@ -32,7 +31,7 @@ export default function Agents() {
   useEffect(() => {
     load();
     loadWallets();
-    base44.entities.Order.list("-created_date", 500).then(setOrders);
+    getOrdersFromSupabase().then(setOrders).catch(() => setOrders([]));
   }, []);
 
   const save = async (data) => {

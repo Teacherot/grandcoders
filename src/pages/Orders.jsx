@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import { base44 } from "@/api/base44Client";
 import { format } from "date-fns";
 import { Plus, Trash2, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -14,7 +13,7 @@ import OrderEvidence from "@/components/orders/OrderEvidence";
 import { nextCode } from "@/lib/shortCode";
 import { pushOrderToGmpl } from "@/lib/gmpl";
 import { toast } from "@/components/ui/use-toast";
-import { createOrderInSupabase, deleteOrderInSupabase, getOrdersFromSupabase, updateOrderInSupabase } from "@/lib/supabaseData";
+import { createOrderInSupabase, deleteOrderInSupabase, getAgentsFromSupabaseLive, getOrdersFromSupabase, getPackagesFromSupabase, updateOrderInSupabase } from "@/lib/supabaseData";
 
 export default function Orders() {
   const [orders, setOrders] = useState(null);
@@ -33,8 +32,8 @@ export default function Orders() {
   const ensureFormLookups = () => {
     if (lookupsLoaded) return;
     setLookupsLoaded(true);
-    base44.entities.Package.list().then(setPackages);
-    base44.entities.Agent.list().then(setAgents);
+    getPackagesFromSupabase().then(setPackages).catch(() => setPackages([]));
+    getAgentsFromSupabaseLive().then(setAgents).catch(() => setAgents([]));
   };
 
   const load = async () => {

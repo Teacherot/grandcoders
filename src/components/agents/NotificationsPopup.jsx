@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { base44 } from "@/api/base44Client";
 import { X, Info, CheckCircle2, AlertTriangle } from "lucide-react";
+import { getNotificationsFromSupabase } from "@/lib/supabaseData";
 
 const ICON = { info: Info, success: CheckCircle2, warning: AlertTriangle };
 const STYLE = {
@@ -50,16 +50,20 @@ export default function NotificationsPopup() {
   });
 
   useEffect(() => {
-    base44.entities.Notification.filter({ active: true }, "-created_date", 20).then((all) => {
-      setItems(all.filter((n) => !dismissed.has(n.id)));
-    });
-    const unsub = base44.entities.Notification.subscribe((ev) => {
-      if (ev.type === "create" && ev.data?.active && !dismissed.has(ev.data.id)) {
-        setItems((prev) => (prev.some((p) => p.id === ev.data.id) ? prev : [ev.data, ...prev]));
-      }
-    });
-    return unsub;
-  }, []);
+    let mounted = true;
+    const load = async () => {
+      const all = await getNotificationsFromSupabase().catch(() => []);
+      if (!mounted) return;
+      setItems((all || []).filter((n) => n.active !== false && !dismissed.has(n.id)).slice(0, 20));
+    };
+
+    load();
+    const timer = setInterval(load, 15000);
+    return () => {
+      mounted = false;
+      clearInterval(timer);
+    };
+  }, [dismissed]);
 
   const dismiss = (id) => {
     const next = new Set(dismissed);

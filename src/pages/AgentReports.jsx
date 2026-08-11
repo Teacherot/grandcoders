@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from "react";
-import { base44 } from "@/api/base44Client";
 import { useRole } from "@/components/RoleShell";
 import PageHeader from "@/components/PageHeader";
 import { format } from "date-fns";
 import ReportEvidence from "@/components/reports/ReportEvidence";
+import { getReportsFromSupabase } from "@/lib/supabaseData";
 
 const REPORT_STATUS_STYLE = {
   open: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:border-amber-900 dark:text-amber-300",
@@ -18,7 +18,9 @@ export default function AgentReports() {
 
   useEffect(() => {
     if (!agent) return;
-    base44.entities.Report.filter({ agent_id: agent.id }, "-created_date", 500).then(setReports);
+    getReportsFromSupabase()
+      .then((rows) => setReports((rows || []).filter((r) => r.agent_id === agent.id)))
+      .catch(() => setReports([]));
   }, [agent?.id]);
 
   if (!agent) return null;

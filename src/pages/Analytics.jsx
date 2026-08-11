@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { base44 } from "@/api/base44Client";
 import { format, subDays, isAfter } from "date-fns";
-import { getOrdersFromSupabase } from "@/lib/supabaseData";
+import { getAgentsFromSupabaseLive, getOrdersFromSupabase, getPackagesFromSupabase } from "@/lib/supabaseData";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import PageHeader from "@/components/PageHeader";
 import StatCard from "@/components/StatCard";
@@ -21,15 +20,15 @@ export default function Analytics() {
 
   useEffect(() => {
     const load = async () => {
-      const [orderRows] = await Promise.all([
+      const [orderRows, agentRows, packageRows] = await Promise.all([
         getOrdersFromSupabase(),
-        base44.entities.Agent.list().catch(() => []),
-        base44.entities.Package.list().catch(() => []),
+        getAgentsFromSupabaseLive().catch(() => []),
+        getPackagesFromSupabase().catch(() => []),
       ]);
       setOrders(orderRows);
-      setAgents(await base44.entities.Agent.list().catch(() => []));
-      setPackages(await base44.entities.Package.list().catch(() => []));
-      base44.functions.invoke("getGmplPricing", {}).then((r) => setGmplPricing(r.data?.pricing || [])).catch(() => setGmplPricing([]));
+      setAgents(agentRows || []);
+      setPackages(packageRows || []);
+      setGmplPricing([]);
     };
 
     load();
