@@ -1,0 +1,64 @@
+{
+  "name": "Package",
+  "type": "object",
+  "properties": {
+    "code": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "network": {
+      "type": "string",
+      "enum": [
+        "MTN",
+        "Telecel",
+        "AirtelTigo",
+        "Other"
+      ],
+      "default": "MTN"
+    },
+    "volume_gb": {
+      "type": "number"
+    },
+    "price": {
+      "type": "number"
+    },
+    "agent_price": {
+      "type": "number"
+    },
+    "validity": {
+      "type": "string",
+      "default": "No expiry"
+    },
+    "active": {
+      "type": "boolean",
+      "default": true
+    },
+    "github_repo": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "name",
+    "price"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": null,
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

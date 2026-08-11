@@ -1,0 +1,93 @@
+{
+  "name": "Report",
+  "type": "object",
+  "properties": {
+    "order_id": {
+      "type": "string"
+    },
+    "order_reference": {
+      "type": "string"
+    },
+    "agent_id": {
+      "type": "string"
+    },
+    "agent_name": {
+      "type": "string"
+    },
+    "agent_email": {
+      "type": "string"
+    },
+    "customer_name": {
+      "type": "string"
+    },
+    "recipient_number": {
+      "type": "string"
+    },
+    "package_name": {
+      "type": "string"
+    },
+    "network": {
+      "type": "string"
+    },
+    "reason": {
+      "type": "string"
+    },
+    "details": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "open",
+        "reviewing",
+        "resolved",
+        "rejected"
+      ],
+      "default": "open"
+    },
+    "resolution": {
+      "type": "string"
+    },
+    "new_order_status": {
+      "type": "string"
+    },
+    "admin_notes": {
+      "type": "string"
+    },
+    "evidence_url": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "recipient_number",
+    "reason"
+  ],
+  "rls": {
+    "create": null,
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "data.agent_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

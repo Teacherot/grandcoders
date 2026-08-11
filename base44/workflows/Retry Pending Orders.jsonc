@@ -1,0 +1,45 @@
+{
+  "description": "Re-pushes orders left pending (awaiting GMPL stock) every 10 minutes so verified orders process and rejected ones are cancelled when the supplier reopens stock.",
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "retry_pending_orders",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "retry": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "retryPendingOrders",
+            "args": {}
+          },
+          "then": "end",
+          "x-base44": {
+            "title": "Retry pending orders",
+            "description": "Re-push orders awaiting stock"
+          }
+        }
+      }
+    ]
+  },
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "scheduled",
+      "events": [],
+      "schedule_mode": "recurring",
+      "cron_expression": "*/10 * * * *",
+      "one_time_date": null,
+      "timezone": "UTC",
+      "interval_value": null,
+      "interval_unit": null,
+      "interval_anchor": null,
+      "ends_type": "never",
+      "ends_on_date": null,
+      "ends_after_count": null
+    }
+  },
+  "name": "Retry Pending Orders"
+}

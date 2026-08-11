@@ -1,0 +1,133 @@
+{
+  "name": "Order",
+  "type": "object",
+  "properties": {
+    "code": {
+      "type": "string"
+    },
+    "customer_name": {
+      "type": "string"
+    },
+    "recipient_number": {
+      "type": "string"
+    },
+    "network": {
+      "type": "string",
+      "enum": [
+        "MTN",
+        "Telecel",
+        "AirtelTigo",
+        "Other"
+      ],
+      "default": "MTN"
+    },
+    "package_name": {
+      "type": "string"
+    },
+    "volume_gb": {
+      "type": "number"
+    },
+    "amount": {
+      "type": "number"
+    },
+    "agent_id": {
+      "type": "string"
+    },
+    "agent_name": {
+      "type": "string"
+    },
+    "agent_email": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "processing",
+        "completed",
+        "failed",
+        "cancelled"
+      ],
+      "default": "pending"
+    },
+    "payment_method": {
+      "type": "string",
+      "enum": [
+        "momo",
+        "cash",
+        "wallet"
+      ],
+      "default": "momo"
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "store",
+        "agent",
+        "admin"
+      ],
+      "default": "agent"
+    },
+    "reference": {
+      "type": "string"
+    },
+    "payment_reference": {
+      "type": "string",
+      "description": "Original payment provider transaction reference. For KoraPay storefront orders, this is the KoraPay transaction reference and must never be overwritten."
+    },
+    "gmpl_order_id": {
+      "type": "string"
+    },
+    "evidence_url": {
+      "type": "string"
+    },
+    "archived": {
+      "type": "boolean",
+      "default": false
+    },
+    "archived_date": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "recipient_number",
+    "amount"
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "data.agent_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "read": {
+      "$or": [
+        {
+          "data.agent_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

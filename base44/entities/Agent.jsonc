@@ -1,0 +1,99 @@
+{
+  "name": "Agent",
+  "type": "object",
+  "properties": {
+    "code": {
+      "type": "string"
+    },
+    "full_name": {
+      "type": "string"
+    },
+    "phone": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string"
+    },
+    "region": {
+      "type": "string"
+    },
+    "commission_rate": {
+      "type": "number",
+      "default": 5
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "suspended"
+      ],
+      "default": "active"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "store_name": {
+      "type": "string"
+    },
+    "store_slug": {
+      "type": "string"
+    },
+    "store_bio": {
+      "type": "string"
+    },
+    "store_notice": {
+      "type": "string"
+    },
+    "store_theme": {
+      "type": "string",
+      "default": "#1E6FE8"
+    },
+    "store_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "logo_url": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "full_name",
+    "phone"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "$or": [
+        {
+          "data.email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "data.email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

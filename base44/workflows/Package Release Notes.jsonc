@@ -1,0 +1,40 @@
+{
+  "name": "Package Release Notes",
+  "description": "Creates a GitHub release with release notes when a new package with a github_repo is deployed",
+  "trigger": {
+    "config": {
+      "trigger_type": "entity",
+      "entity_name": "Package",
+      "events": [
+        "create"
+      ]
+    },
+    "condition": "${ (.trigger.data.github_repo // \"\") != \"\" }"
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "package_release_notes",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "create_release": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "createGithubRelease",
+            "args": {
+              "package_id": "${ .trigger.entity_id }"
+            }
+          },
+          "then": "end",
+          "x-base44": {
+            "title": "Create GitHub release",
+            "description": "Posts release notes to the package repo"
+          }
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,64 @@
+{
+  "name": "MomoTransaction",
+  "type": "object",
+  "properties": {
+    "transaction_id": {
+      "type": "string"
+    },
+    "amount": {
+      "type": "number"
+    },
+    "sender_number": {
+      "type": "string"
+    },
+    "sender_name": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "claimed",
+        "rejected"
+      ],
+      "default": "pending"
+    },
+    "agent_id": {
+      "type": "string"
+    },
+    "agent_name": {
+      "type": "string"
+    },
+    "raw_message": {
+      "type": "string"
+    },
+    "network": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "transaction_id"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

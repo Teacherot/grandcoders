@@ -1,0 +1,44 @@
+{
+  "name": "Cleanup Korapay Pending",
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "cleanup_korapay_pending",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "sweep": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "cleanupKorapayPending"
+          },
+          "then": "end",
+          "x-base44": {
+            "title": "Cleanup pending charge metadata",
+            "description": "Delete abandoned korapay_pending rows older than 24h"
+          }
+        }
+      }
+    ]
+  },
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "scheduled",
+      "events": [],
+      "schedule_mode": "recurring",
+      "cron_expression": "0 3 * * *",
+      "one_time_date": null,
+      "timezone": "UTC",
+      "interval_value": null,
+      "interval_unit": null,
+      "interval_anchor": null,
+      "ends_type": "never",
+      "ends_on_date": null,
+      "ends_after_count": null
+    }
+  },
+  "description": "Daily sweep that deletes abandoned korapay_pending:* and stale korapay_lock:* Setting rows so stale pending-charge PII doesn't persist forever"
+}

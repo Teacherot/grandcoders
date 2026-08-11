@@ -1,0 +1,44 @@
+{
+  "name": "Archive Old Orders",
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "archive_old_orders",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "archive": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "archiveOldOrders"
+          },
+          "then": "end",
+          "x-base44": {
+            "title": "Archive old orders",
+            "description": "Older than 7 days"
+          }
+        }
+      }
+    ]
+  },
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "scheduled",
+      "events": [],
+      "schedule_mode": "recurring",
+      "cron_expression": "0 2 * * 1",
+      "one_time_date": null,
+      "timezone": "UTC",
+      "interval_value": null,
+      "interval_unit": null,
+      "interval_anchor": null,
+      "ends_type": "never",
+      "ends_on_date": null,
+      "ends_after_count": null
+    }
+  },
+  "description": "Archives completed/failed/cancelled orders older than 7 days to keep the active list clean"
+}

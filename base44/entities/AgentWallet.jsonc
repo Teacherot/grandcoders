@@ -1,0 +1,51 @@
+{
+  "name": "AgentWallet",
+  "type": "object",
+  "properties": {
+    "agent_id": {
+      "type": "string"
+    },
+    "agent_name": {
+      "type": "string"
+    },
+    "balance": {
+      "type": "number",
+      "default": 0
+    },
+    "api_key": {
+      "type": "string",
+      "description": "SHA-256 hash of the agent's API key. Never store the plaintext key."
+    },
+    "api_key_created": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the current API key was generated, used for 90-day expiry checks."
+    }
+  },
+  "required": [
+    "agent_id",
+    "api_key"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

@@ -1,0 +1,62 @@
+import React, { useEffect, useState } from "react";
+import { base44 } from "@/api/base44Client";
+import { useRole } from "@/components/RoleShell";
+import PageHeader from "@/components/PageHeader";
+import ChatThread from "@/components/chat/ChatThread";
+import { toast } from "@/components/ui/use-toast";
+
+export default function Support() {
+  const { agent } = useRole();
+  const [messages, setMessages] = useState(null);
+  const [sending, setSending] = useState(false);
+
+  const load = () => base44.entities.ChatMessage.filter({ agent_id: agent?.id }, "created_date", 500).then(setMessages);
+
+  useEffect(() => {
+    if (!agent) return;
+    load();
+    const unsub = base44.entities.ChatMessage.subscribe((event) => {
+      if (event?.data?.agent_id === agent.id) load();
+    });
+    return unsub;
+  }, [agent?.id]);
+
+  useEffect(() => {
+    if (!messages) return;
+    messages
+      .filter((m) => m.sender === "admin" && !m.read)
+      .forEach((m) => base44.entities.ChatMessage.update(m.id, { read: true }).catch(() => {}));
+  }, [messages]);
+
+  if (!agent) return null;
+
+  const send = async (text, file) => {
+    setSending(true);
+    try {
+      await base44.entities.ChatMessage.create({
+        agent_id: agent.id,
+        agent_name: agent.full_name,
+        agent_email: agent.email,
+        sender: "agent",
+        message: text,
+        file_url: file?.file_url || "",
+        file_name: file?.file_name || "",
+        read: false,
+      });
+      load();
+    } catch (err) {
+      toast({ title: "Message not sent", description: err.message, variant: "destructive" });
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div>
+      <PageHeader title="Support" subtitle="Chat directly with the GrandCoders admin team" />
+      <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden h-[calc(100vh-13rem)] md:h-[calc(100vh-11rem)]">
+        <ChatThread messages={messages} myRole="agent" onSend={send} sending={sending} headerLabel="Admin support" />
+      </div>
+    </div>
+  );
+}

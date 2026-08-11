@@ -1,0 +1,7 @@
+# GrandCoders security.txt
+# https://www.rfc-editor.org/rfc/rfc9116
+
+Contact: mailto:security@grandcoders.net
+Expires: 2027-08-09T23:59:00.000Z
+Preferred-Languages: en
+Canonical: https://grandcoders.net/.well-known/security.txt
