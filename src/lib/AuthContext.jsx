@@ -9,9 +9,15 @@ const buildUserFromSession = async (sessionUser) => {
   let profile = null;
   try {
     if (supabase) {
-      const { data, error } = await supabase.from('agents').select('*').eq('email', sessionUser.email).limit(1);
-      if (!error && data?.[0]) {
-        profile = data[0];
+      const { data: byId, error: byIdError } = await supabase.from('agents').select('*').eq('id', sessionUser.id).limit(1);
+      if (!byIdError && byId?.[0]) {
+        profile = byId[0];
+      } else {
+        // Legacy fallback: older rows may have non-auth IDs and match on email.
+        const { data: byEmail, error: byEmailError } = await supabase.from('agents').select('*').eq('email', sessionUser.email).limit(1);
+        if (!byEmailError && byEmail?.[0]) {
+          profile = byEmail[0];
+        }
       }
     }
   } catch (error) {

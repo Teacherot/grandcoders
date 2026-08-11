@@ -29,8 +29,10 @@ export default function RoleShell() {
 
   useEffect(() => {
     let active = true;
-    (async () => {
-      if (!user?.email) {
+    let unsubscribe = null;
+
+    const loadAgent = async (baseUser = user) => {
+      if (!baseUser?.email) {
         if (active) {
           setAgent(null);
           setLoading(false);
@@ -39,7 +41,7 @@ export default function RoleShell() {
       }
 
       try {
-        if (user.role === "admin") {
+        if (baseUser.role === "admin") {
           if (active) { setAgent(null); setLoading(false); }
           return;
         }
@@ -47,14 +49,21 @@ export default function RoleShell() {
         let profile = null;
         if (supabase) {
           try {
-            const { data, error } = await supabase.from('agents').select('*').eq('email', user.email).limit(1);
-            if (!error && data?.[0]) {
-              profile = data[0];
-            } else if (!error) {
+            const { data: byId, error: byIdError } = await supabase.from('agents').select('*').eq('id', baseUser.id).limit(1);
+            if (!byIdError && byId?.[0]) {
+              profile = byId[0];
+            } else {
+              const { data: byEmail, error: byEmailError } = await supabase.from('agents').select('*').eq('email', baseUser.email).limit(1);
+              if (!byEmailError && byEmail?.[0]) {
+                profile = byEmail[0];
+              }
+            }
+
+            if (!profile) {
               const fallbackAgent = {
-                id: user.id,
-                email: user.email,
-                full_name: user.full_name || user.email?.split('@')[0] || 'Agent',
+                id: baseUser.id,
+                email: baseUser.email,
+                full_name: baseUser.full_name || baseUser.email?.split('@')[0] || 'Agent',
                 role: 'agent',
                 status: 'active',
                 commission_rate: 10,
@@ -80,11 +89,22 @@ export default function RoleShell() {
         }
 
         if (active) {
+          const safeProfile = profile
+            ? {
+                ...profile,
+                full_name: profile.full_name || baseUser.full_name || baseUser.email?.split('@')[0] || 'Agent',
+                email: profile.email || baseUser.email,
+                role: profile.role || 'agent',
+                status: profile.status || 'active',
+                commission_rate: profile.commission_rate ?? 10,
+              }
+            : null;
+
           setAgent(
-            profile || {
-              id: user.id,
-              email: user.email,
-              full_name: user.full_name || user.email?.split('@')[0] || 'Agent',
+            safeProfile || {
+              id: baseUser.id,
+              email: baseUser.email,
+              full_name: baseUser.full_name || baseUser.email?.split('@')[0] || 'Agent',
               role: 'agent',
               status: 'active',
               commission_rate: 10,
@@ -95,9 +115,9 @@ export default function RoleShell() {
         console.warn('RoleShell initialization failed', error);
         if (active) {
           setAgent({
-            id: user?.id,
-            email: user?.email,
-            full_name: user?.full_name || user?.email?.split('@')[0] || 'Agent',
+            id: baseUser?.id,
+            email: baseUser?.email,
+            full_name: baseUser?.full_name || baseUser?.email?.split('@')[0] || 'Agent',
             role: 'agent',
             status: 'active',
             commission_rate: 10,
@@ -106,8 +126,30 @@ export default function RoleShell() {
       } finally {
         if (active) setLoading(false);
       }
+    };
+
+    (async () => {
+      await loadAgent(user);
+
+      if (!supabase) return;
+      const { data } = supabase.auth.onAuthStateChange(async (event, session) => {
+        if (!active) return;
+        if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) {
+          await loadAgent({
+            id: session.user.id,
+            email: session.user.email,
+            full_name: user?.full_name || session.user.user_metadata?.full_name,
+            role: user?.role || session.user.user_metadata?.role || 'agent',
+          });
+        }
+      });
+      unsubscribe = data?.subscription?.unsubscribe || null;
     })();
-    return () => { active = false; };
+
+    return () => {
+      active = false;
+      if (typeof unsubscribe === 'function') unsubscribe();
+    };
   }, [user?.id, user?.email, user?.full_name, user?.role]);
 
   const role = user?.role === "admin" ? "admin" : "agent";

@@ -95,6 +95,8 @@ export default function AgentDashboard() {
   };
 
   if (!agent) return null;
+  const agentName = String(agent.full_name || agent.store_name || agent.email || "Agent");
+  const firstName = agentName.split(" ")[0] || "Agent";
   const list = orders || [];
   const completed = list.filter((o) => o.status === "completed");
   const pending = list.filter((o) => ["pending", "processing"].includes(o.status));
@@ -140,7 +142,7 @@ export default function AgentDashboard() {
   return (
     <div>
       <PageHeader
-        title={`Hi, ${agent.full_name.split(" ")[0]}`}
+        title={`Hi, ${firstName}`}
         subtitle={agent.store_name ? `Your store: ${agent.store_name}` : "Manage your store, prices and payouts"}
         action={
           <div className="flex flex-wrap gap-2">
