@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
+import { createAgentWalletInSupabase, getAgentWalletsFromSupabase, updateAgentWalletInSupabase } from "@/lib/supabaseData";
+import { supabase } from "@/lib/supabaseClient";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -13,10 +14,10 @@ export default function WalletTopUp({ agent, onClose }) {
   const [saving, setSaving] = useState(false);
 
   const load = async () => {
-    let list = await base44.entities.AgentWallet.filter({ agent_id: agent.id });
-    let w = list && list[0];
+    const list = await getAgentWalletsFromSupabase();
+    let w = (list || []).find((item) => item.agent_id === agent.id);
     if (!w) {
-      w = await base44.entities.AgentWallet.create({
+      w = await createAgentWalletInSupabase({
         agent_id: agent.id,
         agent_name: agent.full_name,
         balance: 0,
@@ -37,15 +38,21 @@ export default function WalletTopUp({ agent, onClose }) {
     setSaving(true);
     try {
       const balanceAfter = Number(wallet.balance || 0) + amt;
-      await base44.entities.AgentWallet.update(wallet.id, { balance: balanceAfter });
-      await base44.entities.WalletTransaction.create({
+      await updateAgentWalletInSupabase(wallet.id, { balance: balanceAfter });
+      if (!supabase) {
+        throw new Error("Supabase is not configured for wallet transactions");
+      }
+      const { error } = await supabase.from("wallet_transactions").insert({
+        id: `tx-${Date.now()}`,
         agent_id: agent.id,
         agent_name: agent.full_name,
         type: "top_up",
         amount: amt,
         balance_after: balanceAfter,
         notes,
+        created_date: new Date().toISOString(),
       });
+      if (error) throw error;
       await load();
       setAmount("");
       setNotes("");
