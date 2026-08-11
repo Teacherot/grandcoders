@@ -52,6 +52,8 @@ For frontend-only development, create or update `.env.local` in the project root
 ```bash
 VITE_BASE44_APP_ID=your_app_id
 VITE_BASE44_APP_BASE_URL=https://your-app.base44.app
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key
 ```
 
 `VITE_BASE44_APP_ID` identifies the Base44 app.
@@ -59,6 +61,18 @@ VITE_BASE44_APP_BASE_URL=https://your-app.base44.app
 `VITE_BASE44_APP_BASE_URL` tells the Base44 Vite plugin where to send local `/api` requests. Point it at your deployed Base44 app URL when you want the local frontend to use the hosted backend.
 
 When you use `base44 dev`, the command injects the local Base44 values for you, so `.env.local` is mainly needed for frontend-only workflows.
+
+## Connect Supabase to Vercel
+
+1. Open your Vercel project dashboard.
+2. Go to Settings → Environment Variables.
+3. Add these two variables for Production, Preview, and Development:
+   - `VITE_SUPABASE_URL`
+   - `VITE_SUPABASE_ANON_KEY`
+4. Use the same values that are currently in `.env.local`.
+5. Trigger a new deployment.
+
+The app will read the Supabase connection from Vercel after the redeploy finishes.
 
 ## Publish Your Changes
 
