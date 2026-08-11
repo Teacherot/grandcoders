@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from "react";
-import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import StatusBadge from "@/components/StatusBadge";
 import { toast } from "@/components/ui/use-toast";
 import { format } from "date-fns";
+import { getWithdrawalsFromSupabase, updateWithdrawalInSupabase } from "@/lib/supabaseData";
 
 const cedi = (n) => `GH₵ ${Number(n || 0).toFixed(2)}`;
 
@@ -17,7 +17,7 @@ export default function WithdrawalApprovals() {
 
   const load = async () => {
     try {
-      const list = await base44.entities.Withdrawal.list("-created_date", 200);
+      const list = await getWithdrawalsFromSupabase();
       setItems(list || []);
     } catch {
       setItems([]);
@@ -25,21 +25,17 @@ export default function WithdrawalApprovals() {
   };
   useEffect(() => {
     load();
-    const u = base44.entities.Withdrawal.subscribe(() => load());
-    return u;
+    const timer = setInterval(load, 15000);
+    return () => clearInterval(timer);
   }, []);
 
   const act = async (id, action) => {
     setBusy(`${id}:${action}`);
     try {
-      const res = await base44.functions.invoke("manageWithdrawal", { id, action });
-      const d = res?.data || {};
-      if (action === "approve" && d.status === "rejected") {
-        toast({ variant: "destructive", title: "Withdrawal rejected", description: "Insufficient wallet balance." });
-      } else {
-        toast({ title: `Withdrawal ${d.status || "updated"}` });
-      }
-      load();
+      const status = action === "approve" ? "approved" : action === "reject" ? "rejected" : "paid";
+      const updated = await updateWithdrawalInSupabase(id, { status });
+      toast({ title: `Withdrawal ${updated?.status || status}` });
+      await load();
     } catch (e) {
       toast({ variant: "destructive", title: "Action failed", description: e?.response?.data?.error || e?.message || "" });
     } finally {

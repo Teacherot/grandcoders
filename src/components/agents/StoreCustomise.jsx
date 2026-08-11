@@ -4,8 +4,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { base44 } from "@/api/base44Client";
 import { Copy, Check, Lock } from "lucide-react";
+import { getSettingsFromSupabase, updateAgentInSupabase } from "@/lib/supabaseData";
 
 const slug = (s) => (s || "").toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
@@ -27,12 +27,14 @@ export default function StoreCustomise({ agent, onSave }) {
   }, [agent.id]);
 
   useEffect(() => {
-    base44.functions.invoke("getStoreStatus", {}).then((r) => setPaused(!!r?.data?.stores_paused)).catch(() => setPaused(false));
+    getSettingsFromSupabase()
+      .then((rows) => setPaused((rows || []).find((r) => r.key === "stores_paused")?.value === "true"))
+      .catch(() => setPaused(false));
   }, []);
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   const save = async () => {
-    await base44.entities.Agent.update(agent.id, { ...form, store_active: paused ? false : form.store_active });
+    await updateAgentInSupabase(agent.id, { ...form, store_active: paused ? false : form.store_active });
     onSave();
   };
 

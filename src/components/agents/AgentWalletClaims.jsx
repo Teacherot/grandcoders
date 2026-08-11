@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { base44 } from "@/api/base44Client";
 import { format } from "date-fns";
+import { getAgentSelfServiceData } from "@/lib/agentSelfService";
 
 const cedi = (n) => `GH₵ ${Number(n || 0).toFixed(2)}`;
 
@@ -15,9 +15,8 @@ export default function AgentWalletClaims() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    base44.functions
-      .invoke("agentSelfService", {})
-      .then((res) => setData(res?.data || null))
+    getAgentSelfServiceData()
+      .then((res) => setData(res || null))
       .finally(() => setLoading(false));
   }, []);
 

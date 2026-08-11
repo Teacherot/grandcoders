@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useState } from "react";
-import { base44 } from "@/api/base44Client";
 import { Paperclip, Send, X, FileText } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -31,7 +30,7 @@ export default function ChatThread({ messages, myRole, onSend, sending, headerLa
     const f = e.target.files?.[0];
     if (!f) return;
     try {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file: f });
+      const file_url = URL.createObjectURL(f);
       setFile({ file_url, file_name: f.name });
     } catch (_) {
       /* ignore — parent toasts on send */

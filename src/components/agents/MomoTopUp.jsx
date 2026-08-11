@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Copy, Check, Loader2, AlertCircle, Wallet } from "lucide-react";
+import { getAgentSelfServiceData } from "@/lib/agentSelfService";
 
 const cedi = (n) => `GH₵ ${Number(n || 0).toFixed(2)}`;
 
@@ -21,8 +21,8 @@ export default function MomoTopUp() {
   const load = async () => {
     setLoadingInfo(true);
     try {
-      const res = await base44.functions.invoke("agentSelfService", {});
-      setInfo(res?.data || null);
+      const res = await getAgentSelfServiceData();
+      setInfo(res || null);
     } catch {
       /* ignore */
     } finally {
@@ -56,10 +56,7 @@ export default function MomoTopUp() {
     if (!txnId.trim()) return;
     setClaiming(true);
     try {
-      const res = await base44.functions.invoke("claimMomoTopup", { transaction_id: txnId.trim() });
-      setResult(res?.data || null);
-      setTxnId("");
-      load();
+      setError("Manual transaction claims are not enabled in Supabase-only mode.");
     } catch (err) {
       setError(err?.response?.data?.error || err?.message || "Could not verify that transaction.");
     } finally {

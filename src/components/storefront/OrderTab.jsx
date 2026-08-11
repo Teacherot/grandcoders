@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { base44 } from "@/api/base44Client";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 import { NetworkMark } from "@/components/storefront/NetworkLogo";
 import BundleCard from "@/components/storefront/BundleCard";
 import BundleForm from "@/components/storefront/BundleForm";
+import { createOrderInSupabase } from "@/lib/supabaseData";
+import { nextCode } from "@/lib/shortCode";
 
 // Ghana mobile: 10 digits starting 0 (e.g. 0244XXXXXX), or 233 + 9 digits.
 const validGhNumber = (n) => {
@@ -46,7 +47,7 @@ export default function OrderTab({ agent, prices }) {
       return;
     }
     setBusy(true);
-    setPayMsg("Checking availability…");
+    setPayMsg("Placing order…");
     const orderMeta = {
       store_slug: agent.store_slug,
       package_name: p.package_name,
@@ -55,30 +56,24 @@ export default function OrderTab({ agent, prices }) {
       amount: p.price,
       recipient_number: recipient,
       customer_name: customer,
+      customer_email: email,
     };
     try {
-      const stockRes = await base44.functions.invoke("checkGmplStock", { network: p.network, volume_gb: p.volume_gb });
-      const stock = stockRes?.data;
-      if (stock && !stock.available) {
-        setPayMsg(stock.reason || "This bundle is out of stock right now. Please try again later.");
-        setBusy(false);
-        return;
-      }
-      setPayMsg("");
-      const returnUrl = window.location.origin + window.location.pathname;
-      const res = await base44.functions.invoke("initializeKorapayCharge", { email, order: orderMeta, return_url: returnUrl });
-      const data = res?.data;
-      if (!data?.checkout_url) {
-        setPayMsg(data?.error || "Could not start payment. Please try again.");
-        setBusy(false);
-        return;
-      }
-      try { sessionStorage.setItem("korapay_pending", JSON.stringify(orderMeta)); } catch {}
-      // Redirect to KoraPay's hosted checkout. On return, the storefront
-      // detects the kpay_ref query param and shows the payment result.
-      window.location.href = data.checkout_url;
+      const created = await createOrderInSupabase({
+        ...orderMeta,
+        code: await nextCode("Order", "O"),
+        source: "store",
+        status: "pending",
+        agent_id: agent.id,
+        agent_name: agent.full_name || agent.store_name || "",
+        agent_email: agent.email || "",
+        payment_method: "momo",
+        reference: `STORE-${Date.now()}`,
+      });
+      setPayMsg(`Order placed successfully. Your Order ID is ${created?.code || "generated"}. Use Check order to track status.`);
     } catch (err) {
       setPayMsg(err?.message || "Payment failed to start.");
+    } finally {
       setBusy(false);
     }
   };

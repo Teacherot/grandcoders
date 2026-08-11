@@ -1,19 +1,39 @@
-import { base44 } from "@/api/base44Client";
+import { supabase } from "@/lib/supabaseClient";
 import { getOrdersFromSupabase } from "@/lib/supabaseData";
 
-export async function nextCode(entityName, prefix) {
-  let all = [];
+const entityTableMap = {
+  Agent: "agents",
+  Package: "packages",
+  Report: "reports",
+  Notification: "notifications",
+  Order: "orders",
+};
 
+async function getRowsForEntity(entityName) {
   if (entityName === "Order") {
-    all = await getOrdersFromSupabase();
-  } else {
-    try {
-      all = await base44.entities[entityName].list("-created_date", 5000);
-    } catch (error) {
-      console.warn("Code lookup fallback failed:", error);
-      all = [];
-    }
+    return getOrdersFromSupabase();
   }
+
+  const table = entityTableMap[entityName];
+  if (!supabase || !table) {
+    return [];
+  }
+
+  try {
+    const { data, error } = await supabase.from(table).select("code").order("created_date", { ascending: false }).limit(5000);
+    if (error) {
+      console.warn("Code lookup failed:", error.message);
+      return [];
+    }
+    return data || [];
+  } catch (error) {
+    console.warn("Code lookup failed:", error);
+    return [];
+  }
+}
+
+export async function nextCode(entityName, prefix) {
+  const all = await getRowsForEntity(entityName);
 
   let max = 0;
   all.forEach((r) => {
@@ -24,18 +44,7 @@ export async function nextCode(entityName, prefix) {
 }
 
 export async function nextCodes(entityName, prefix, count) {
-  let all = [];
-
-  if (entityName === "Order") {
-    all = await getOrdersFromSupabase();
-  } else {
-    try {
-      all = await base44.entities[entityName].list("-created_date", 5000);
-    } catch (error) {
-      console.warn("Code lookup fallback failed:", error);
-      all = [];
-    }
-  }
+  const all = await getRowsForEntity(entityName);
 
   let max = 0;
   all.forEach((r) => {

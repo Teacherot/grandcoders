@@ -1,11 +1,11 @@
 import React, { useState } from "react";
-import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import StatusBadge from "@/components/StatusBadge";
 import NetworkBadge from "@/components/NetworkBadge";
 import { Search, Copy, CheckCircle2, Receipt } from "lucide-react";
 import { Image } from "@/components/ui/image";
+import { getOrdersFromSupabase } from "@/lib/supabaseData";
 
 const cedi = (n) => `GH₵ ${Number(n || 0).toFixed(2)}`;
 const when = (d) => (d ? new Date(d).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" }) : "");
@@ -28,11 +28,12 @@ export default function CheckOrderTab() {
 
   const searchByCode = async (e) => {
     e.preventDefault();
-    const c = code.replace(/\D/g, "");
+    const c = code.trim();
     if (!c) return;
     setLoading(true); reset();
-    const res = await base44.functions.invoke("checkStorefrontOrder", { code: c });
-    setOrders(res?.data?.orders || []);
+    const rows = await getOrdersFromSupabase().catch(() => []);
+    const found = (rows || []).filter((o) => String(o.code || "").trim().toLowerCase() === c.toLowerCase());
+    setOrders(found);
     setLoading(false);
   };
 
@@ -41,28 +42,20 @@ export default function CheckOrderTab() {
     const reference = ref.trim();
     if (!reference) return;
     setLoading(true); reset();
-    // KoraPay's charge can still read "processing" right after payment; poll a
-    // couple of times before declaring failure (mirrors PayResult's behaviour).
-    const ATTEMPTS = 3;
-    const DELAYS = [3000, 4000];
-    let result = null;
     try {
-      for (let i = 0; i < ATTEMPTS; i++) {
-        const v = await base44.functions.invoke("verifyStorefrontTransaction", { reference });
-        const d = v?.data || {};
-        if (d.ok && d.order) { result = d; break; }
-        if (!d.retryable) { result = d; break; }
-        result = d;
-        if (i < ATTEMPTS - 1) await new Promise((r) => setTimeout(r, DELAYS[i] || 4000));
+      const rows = await getOrdersFromSupabase().catch(() => []);
+      const found = (rows || []).filter((o) => {
+        const raw = String(o.reference || o.payment_reference || "");
+        return raw.toLowerCase().includes(reference.toLowerCase());
+      });
+      if (found.length > 0) {
+        setOrders(found);
+        setRecovered(true);
+      } else {
+        setError("Could not verify this transaction.");
       }
     } catch (err) {
-      result = { error: err?.message || "Could not verify this transaction." };
-    }
-    if (result?.ok && result.order) {
-      setOrders([result.order]);
-      setRecovered(true);
-    } else {
-      setError(result?.error || "Could not verify this transaction.");
+      setError(err?.message || "Could not verify this transaction.");
     }
     setLoading(false);
   };

@@ -200,6 +200,42 @@ export async function updateAgentWalletInSupabase(id, updates) {
   return writeWithFallback('agent_wallets', 'update', updates, id);
 }
 
+export async function getWalletTransactionsFromSupabase() {
+  return readTable('wallet_transactions', 'created_date', 'WalletTransaction');
+}
+
+export async function createWalletTransactionInSupabase(payload) {
+  return writeWithFallback('wallet_transactions', 'create', payload, null);
+}
+
+export async function getMomoTransactionsFromSupabase() {
+  return readTable('momo_transactions', 'created_date', 'MomoTransaction');
+}
+
+export async function createMomoTransactionInSupabase(payload) {
+  return writeWithFallback('momo_transactions', 'create', payload, null);
+}
+
+export async function getWithdrawalsFromSupabase() {
+  return readTable('withdrawals', 'created_date', 'Withdrawal');
+}
+
+export async function updateWithdrawalInSupabase(id, updates) {
+  return writeWithFallback('withdrawals', 'update', updates, id);
+}
+
+export async function getAgentPricesFromSupabase() {
+  return readTable('agent_prices', 'created_date', 'AgentPrice');
+}
+
+export async function createAgentPriceInSupabase(payload) {
+  return writeWithFallback('agent_prices', 'create', payload, null);
+}
+
+export async function updateAgentPriceInSupabase(id, updates) {
+  return writeWithFallback('agent_prices', 'update', updates, id);
+}
+
 export async function getNotificationsFromSupabase() {
   return readTable('notifications', 'created_date', 'Notification');
 }

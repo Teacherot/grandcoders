@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { base44 } from "@/api/base44Client";
 import { CheckCircle2, Copy, Loader2, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { createOrderInSupabase, getOrdersFromSupabase } from "@/lib/supabaseData";
+import { nextCode } from "@/lib/shortCode";
 
 // Handles the customer's return from KoraPay's hosted checkout. Reads the
 // pending order meta from sessionStorage (saved before the redirect), verifies
@@ -28,22 +29,18 @@ export default function PayResult({ agent, reference }) {
       // KoraPay reference still in the URL — so a broken payment screen still
       // yields the customer's Order ID.
       const useRecovery = !meta;
-      const fnName = useRecovery ? "verifyStorefrontTransaction" : "placeStorefrontOrder";
-      const payload = useRecovery ? { reference } : { reference, order: meta };
       if (useRecovery) {
         try {
-          const v = await base44.functions.invoke(fnName, payload);
-          const d = v?.data || {};
-          if (d.ok && d.order) { setState({ verifying: false, order: d.order, error: "" }); return; }
-          if (d.verified === false && d.retryable) {
-            await new Promise((r) => setTimeout(r, 4000));
-            const v2 = await base44.functions.invoke(fnName, payload);
-            const d2 = v2?.data || {};
-            if (d2.ok && d2.order) { setState({ verifying: false, order: d2.order, error: "" }); return; }
-            setState({ verifying: false, order: null, error: d2.error || "Payment could not be verified." });
+          const rows = await getOrdersFromSupabase().catch(() => []);
+          const found = (rows || []).find((row) => {
+            const raw = String(row.reference || row.payment_reference || "");
+            return raw.toLowerCase().includes(String(reference || "").toLowerCase());
+          });
+          if (found) {
+            setState({ verifying: false, order: found, error: "" });
             return;
           }
-          setState({ verifying: false, order: null, error: d.error || "We couldn't confirm your payment. If you were charged, use the Check order → Transaction ID tab with your Transaction ID." });
+          setState({ verifying: false, order: null, error: "We couldn't confirm your payment. If you were charged, use the Check order tab with your Transaction ID." });
           return;
         } catch (err) {
           setState({ verifying: false, order: null, error: err?.message || "Something went wrong." });
@@ -51,23 +48,18 @@ export default function PayResult({ agent, reference }) {
         }
       }
       try {
-        // KoraPay's charge often still reads "processing" when the customer is
-        // redirected back from hosted checkout; the success state lands a few
-        // seconds later. Poll with a short backoff before declaring failure.
-        const ATTEMPTS = 4;
-        const DELAYS = [3000, 4000, 5000, 5000];
-        let result = null;
-        for (let i = 0; i < ATTEMPTS; i++) {
-          const v = await base44.functions.invoke(fnName, payload);
-          result = v?.data || {};
-          if (result.ok && result.order) {
-            setState({ verifying: false, order: result.order, error: "" });
-            return;
-          }
-          if (!result.retryable) break; // hard failure — stop polling
-          if (i < ATTEMPTS - 1) await new Promise((r) => setTimeout(r, DELAYS[i]));
-        }
-        setState({ verifying: false, order: null, error: result?.error || "Payment could not be verified." });
+        const created = await createOrderInSupabase({
+          ...meta,
+          source: "store",
+          status: "pending",
+          payment_reference: reference,
+          reference: reference,
+          code: await nextCode("Order", "O"),
+          agent_id: agent?.id || "",
+          agent_name: agent?.full_name || agent?.store_name || "",
+          agent_email: agent?.email || "",
+        });
+        setState({ verifying: false, order: created, error: "" });
       } catch (err) {
         setState({ verifying: false, order: null, error: err?.message || "Something went wrong." });
       }

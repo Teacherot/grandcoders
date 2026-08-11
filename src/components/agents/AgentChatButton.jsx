@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { base44 } from "@/api/base44Client";
 import { useRole } from "@/components/RoleShell";
 import { MessageCircle } from "lucide-react";
+import { getChatMessagesFromSupabase } from "@/lib/supabaseData";
 
 export default function AgentChatButton() {
   const { agent } = useRole();
@@ -12,14 +12,13 @@ export default function AgentChatButton() {
   useEffect(() => {
     if (!agent) return;
     const load = () =>
-      base44.entities.ChatMessage.filter({ agent_id: agent.id }, "created_date", 500).then((msgs) => {
+      getChatMessagesFromSupabase().then((rows) => {
+        const msgs = (rows || []).filter((m) => m.agent_id === agent.id);
         setUnread(msgs.filter((m) => m.sender === "admin" && !m.read).length);
       });
     load();
-    const unsub = base44.entities.ChatMessage.subscribe((event) => {
-      if (event?.data?.agent_id === agent.id) load();
-    });
-    return unsub;
+    const timer = setInterval(load, 12000);
+    return () => clearInterval(timer);
   }, [agent?.id]);
 
   if (!agent || pathname === "/support") return null;

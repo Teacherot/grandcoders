@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from "react";
-import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/components/ui/use-toast";
+import { createAgentPriceInSupabase, getAgentPricesFromSupabase, getPackagesFromSupabase, updateAgentPriceInSupabase } from "@/lib/supabaseData";
 
 export default function StorePrices({ agent }) {
   const { toast } = useToast();
@@ -14,8 +14,8 @@ export default function StorePrices({ agent }) {
 
   useEffect(() => {
     (async () => {
-      const pkgs = (await base44.entities.Package.list()).filter((p) => p.active !== false);
-      const ap = await base44.entities.AgentPrice.filter({ agent_id: agent.id });
+      const pkgs = (await getPackagesFromSupabase()).filter((p) => p.active !== false);
+      const ap = (await getAgentPricesFromSupabase()).filter((p) => p.agent_id === agent.id);
       setPackages(pkgs);
       setPrices(ap);
       const d = {};
@@ -38,16 +38,24 @@ export default function StorePrices({ agent }) {
     }
     setSaving(p.id);
     try {
-      // Routed through agentSelfService so the server enforces storefront-wide
-      // rules (e.g. 1GB is disabled) — agents can't bypass it with a direct write.
-      const res = await base44.functions.invoke("agentSelfService", { action: "savePrice", package_id: p.id, price: Number(draft.price), active: draft.active });
-      const data = res?.data;
-      if (!data?.ok) {
-        toast({ title: "Couldn't save", description: data?.error || "Please try again.", variant: "destructive" });
-        setSaving(null);
-        return;
+      const existing = prices.find((x) => x.package_id === p.id);
+      const payload = {
+        agent_id: agent.id,
+        agent_email: agent.email,
+        package_id: p.id,
+        package_name: p.name || p.package_name,
+        network: p.network,
+        volume_gb: p.volume_gb,
+        base_price: Number(base || 0),
+        price: Number(draft.price),
+        active: draft.active !== false,
+      };
+      let saved;
+      if (existing?.id) {
+        saved = await updateAgentPriceInSupabase(existing.id, payload);
+      } else {
+        saved = await createAgentPriceInSupabase(payload);
       }
-      const saved = data.price;
       setPrices((prev) => {
         const idx = prev.findIndex((x) => x.package_id === p.id);
         if (idx >= 0) { const copy = [...prev]; copy[idx] = saved; return copy; }

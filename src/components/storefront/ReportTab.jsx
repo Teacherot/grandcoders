@@ -1,10 +1,10 @@
 import React, { useState } from "react";
-import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Search, CheckCircle2 } from "lucide-react";
+import { createReportInSupabase, getOrdersFromSupabase } from "@/lib/supabaseData";
 
 const REASONS = ["Data not delivered", "Wrong bundle received", "Payment issue", "Slow delivery", "Other"];
 
@@ -20,8 +20,9 @@ export default function ReportTab({ agent }) {
   const find = async (e) => {
     e.preventDefault();
     if (!code.trim()) return;
-    const res = await base44.functions.invoke("checkStorefrontOrder", { code: code.trim() });
-    setOrder(res?.data?.orders?.[0] || null);
+    const rows = await getOrdersFromSupabase().catch(() => []);
+    const found = (rows || []).find((row) => String(row.code || "").trim().toLowerCase() === code.trim().toLowerCase());
+    setOrder(found || null);
     setSearched(true);
   };
 
@@ -30,8 +31,10 @@ export default function ReportTab({ agent }) {
     if (!order || !reason) return;
     setBusy(true);
     try {
-      const res = await base44.functions.invoke("placeStorefrontReport", {
+      const created = await createReportInSupabase({
         agent_id: agent?.id || "",
+        agent_name: agent?.full_name || agent?.store_name || "",
+        agent_email: agent?.email || "",
         order_id: order.id || "",
         customer_name: order.customer_name || "",
         recipient_number: order.recipient_number || "",
@@ -39,8 +42,9 @@ export default function ReportTab({ agent }) {
         network: order.network || "",
         reason,
         details,
+        status: "open",
       });
-      setDone(res?.data?.report);
+      setDone(created || null);
     } finally {
       setBusy(false);
     }
