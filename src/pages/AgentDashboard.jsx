@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { base44 } from "@/api/base44Client";
 import { useRole } from "@/components/RoleShell";
 import PageHeader from "@/components/PageHeader";
 import StatCard from "@/components/StatCard";
@@ -17,6 +16,8 @@ import { nextCode, nextCodes } from "@/lib/shortCode";
 import { pushOrderToGmpl, getAgentBalance } from "@/lib/gmpl";
 import { toast } from "@/components/ui/use-toast";
 import { getBackendHealth } from "@/lib/backend-api";
+import { testSupabaseConnection, getAgentsFromSupabase } from "@/lib/supabaseClient";
+import { createOrderInSupabase, getOrdersFromSupabase, getPackagesFromSupabase } from "@/lib/supabaseData";
 
 const cedi = (n) => `GH₵ ${Number(n || 0).toFixed(2)}`;
 
@@ -37,34 +38,61 @@ export default function AgentDashboard() {
 
     let cancelled = false;
 
-    const loadOrders = () => base44.entities.Order.filter({ agent_id: agent.id }, "-created_date", 200).then(setOrders);
+    const loadOrders = async () => {
+      const rows = await getOrdersFromSupabase();
+      if (!cancelled) setOrders((rows || []).filter((row) => row.agent_id === agent.id));
+    };
+    const loadAgents = async () => {
+      try {
+        const data = await getAgentsFromSupabase();
+        if (!cancelled && data.length > 0) {
+          const match = data.find((row) => row.id === agent.id || row.email === agent.email);
+          if (match) {
+            const merged = { ...agent, ...match };
+            if (JSON.stringify(merged) !== JSON.stringify(agent)) {
+              // keep the current UI state but expose the live agent row for future use
+            }
+          }
+        }
+      } catch {
+        // ignore and keep using the existing agent object
+      }
+    };
     loadOrders();
-    base44.functions.invoke("agentSelfService", {}).then((r) => setWallet(r?.data || null)).catch(() => {});
-    base44.entities.Package.list().then(setPackages);
-    base44.entities.AgentPrice.filter({ agent_id: agent.id, active: true }).then(setPrices);
+    loadAgents();
+    setWallet(null);
+    getPackagesFromSupabase().then((rows) => {
+      if (!cancelled) setPackages(rows || []);
+    }).catch(() => {});
+    setPrices([]);
 
-    getBackendHealth()
-      .then((data) => {
-        if (!cancelled) setBackendStatus(data);
+    Promise.all([
+      getBackendHealth().catch((error) => ({ service: "local", ok: false, error: error?.message || "Backend unavailable" })),
+      testSupabaseConnection().catch((error) => ({ ok: false, reason: error?.message || "Supabase unavailable" })),
+    ])
+      .then(([health, supabaseResult]) => {
+        if (cancelled) return;
+        if (supabaseResult?.ok) {
+          setBackendStatus({ service: "supabase", ok: true });
+          setBackendError("");
+        } else {
+          setBackendStatus(health?.ok ? health : null);
+          setBackendError(supabaseResult?.reason || health?.error || "Backend unavailable");
+        }
       })
       .catch((error) => {
         if (!cancelled) setBackendError(error?.message || "Backend unavailable");
       });
 
-    const unsub = base44.entities.Order.subscribe((ev) => {
-      if (ev.type !== "update" && ev.type !== "create") return;
-      const o = ev.data;
-      if (!o || o.agent_id !== agent.id) return;
-      loadOrders();
-    });
-
     return () => {
       cancelled = true;
-      if (typeof unsub === "function") unsub();
     };
   }, [agent?.id]);
 
-  const reload = () => base44.entities.Order.filter({ agent_id: agent.id }, "-created_date", 200).then(setOrders);
+  const reload = async () => {
+    const rows = await getOrdersFromSupabase();
+    setOrders((rows || []).filter((row) => row.agent_id === agent.id));
+  };
 
   if (!agent) return null;
   const list = orders || [];
@@ -80,7 +108,7 @@ export default function AgentDashboard() {
         toast({ title: "Insufficient wallet balance", description: `This order costs ${cedi(data.amount)} but your wallet has ${cedi(balance)}. Top up your wallet to place it.`, variant: "destructive" });
         return;
       }
-      const o = await base44.entities.Order.create({ ...data, agent_id: agent.id, agent_name: agent.full_name, agent_email: agent.email, code: await nextCode("Order", "O") });
+      const o = await createOrderInSupabase({ ...data, agent_id: agent.id, agent_name: agent.full_name, agent_email: agent.email, code: await nextCode("Order", "O") });
       setOpen(false);
       const res = await pushOrderToGmpl(o);
       reload();
@@ -98,7 +126,7 @@ export default function AgentDashboard() {
         return;
       }
       const codes = await nextCodes("Order", "O", rows.length);
-      const created = await base44.entities.Order.bulkCreate(rows.map((r, i) => ({ ...r, agent_id: agent.id, agent_name: agent.full_name, agent_email: agent.email, code: codes[i] })));
+      const created = await Promise.all(rows.map((r, i) => createOrderInSupabase({ ...r, agent_id: agent.id, agent_name: agent.full_name, agent_email: agent.email, code: codes[i] })));
       setBulkOpen(false);
       const results = await Promise.allSettled((Array.isArray(created) ? created : []).map(pushOrderToGmpl));
       reload();

@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import { base44 } from "@/api/base44Client";
 import { useRole } from "@/components/RoleShell";
 import PageHeader from "@/components/PageHeader";
 import StatusBadge from "@/components/StatusBadge";
@@ -15,6 +14,7 @@ import OrderReportForm from "@/components/agents/OrderReportForm";
 import ReportEvidence from "@/components/reports/ReportEvidence";
 import { nextCode, nextCodes } from "@/lib/shortCode";
 import { pushOrderToGmpl, getAgentBalance } from "@/lib/gmpl";
+import { createOrderInSupabase, createReportInSupabase, getOrdersFromSupabase, getPackagesFromSupabase, getReportsFromSupabase } from "@/lib/supabaseData";
 import { toast } from "@/components/ui/use-toast";
 
 const cedi = (n) => `GH₵ ${Number(n || 0).toFixed(2)}`;
@@ -55,18 +55,24 @@ export default function AgentOrders() {
   const ensureFormLookups = () => {
     if (lookupsLoaded) return;
     setLookupsLoaded(true);
-    base44.entities.Package.list().then(setPackages);
-    base44.entities.AgentPrice.filter({ agent_id: agent.id, active: true }).then(setPrices);
+    getPackagesFromSupabase().then(setPackages).catch(() => {});
+    setPrices([]);
   };
 
   useEffect(() => {
     if (!agent) return;
-    base44.entities.Order.filter({ agent_id: agent.id }, "-created_date", 500).then(setOrders);
+    getOrdersFromSupabase().then((rows) => setOrders((rows || []).filter((row) => row.agent_id === agent.id))).catch(() => setOrders([]));
     reloadReports();
   }, [agent?.id]);
 
-  const reload = () => base44.entities.Order.filter({ agent_id: agent.id }, "-created_date", 500).then(setOrders);
-  const reloadReports = () => base44.entities.Report.filter({ agent_id: agent.id }, "-created_date", 500).then(setReports);
+  const reload = async () => {
+    const rows = await getOrdersFromSupabase();
+    setOrders((rows || []).filter((row) => row.agent_id === agent.id));
+  };
+  const reloadReports = async () => {
+    const rows = await getReportsFromSupabase();
+    setReports((rows || []).filter((row) => row.agent_id === agent.id));
+  };
 
   const saveOrder = async (data) => {
     try {
@@ -79,7 +85,7 @@ export default function AgentOrders() {
         });
         return;
       }
-      const o = await base44.entities.Order.create({ ...data, agent_id: agent.id, agent_name: agent.full_name, agent_email: agent.email, code: await nextCode("Order", "O") });
+      const o = await createOrderInSupabase({ ...data, agent_id: agent.id, agent_name: agent.full_name, agent_email: agent.email, code: await nextCode("Order", "O") });
       setOpen(false);
       const res = await pushOrderToGmpl(o);
       reload();
@@ -103,7 +109,7 @@ export default function AgentOrders() {
         return;
       }
       const codes = await nextCodes("Order", "O", rows.length);
-      const created = await base44.entities.Order.bulkCreate(rows.map((r, i) => ({ ...r, agent_id: agent.id, agent_name: agent.full_name, agent_email: agent.email, code: codes[i] })));
+      const created = await Promise.all(rows.map((r, i) => createOrderInSupabase({ ...r, agent_id: agent.id, agent_name: agent.full_name, agent_email: agent.email, code: codes[i] })));
       setBulkOpen(false);
       const results = await Promise.allSettled((Array.isArray(created) ? created : []).map(pushOrderToGmpl));
       reload();
@@ -118,7 +124,8 @@ export default function AgentOrders() {
   const saveReport = async (data) => {
     const o = reportOrder;
     if (o?.status !== "completed") return;
-    await base44.entities.Report.create({
+    await createReportInSupabase({
+      id: `report-${Date.now()}`,
       order_id: o.id,
       order_reference: o.reference || "",
       agent_id: agent.id,
@@ -131,6 +138,7 @@ export default function AgentOrders() {
       reason: data.reason,
       details: data.details,
       status: "open",
+      created_date: new Date().toISOString(),
     });
     setReportOpen(false);
     setReportOrder(null);

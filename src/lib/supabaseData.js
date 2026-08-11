@@ -74,13 +74,21 @@ export async function getOrdersFromSupabase() {
   return [];
 }
 
-export async function createOrderInSupabase(payload) {
+export async function createRecordInSupabase(tableName, payload) {
   const row = {
-    id: payload.id || `order-${Date.now()}`,
+    id: payload.id || `${tableName}-${Date.now()}`,
     ...payload,
     created_date: payload.created_date || payload.created_at || new Date().toISOString(),
   };
-  return writeWithFallback('orders', 'create', row, null);
+  return writeWithFallback(tableName, 'create', row, null);
+}
+
+export async function createOrderInSupabase(payload) {
+  return createRecordInSupabase('orders', payload);
+}
+
+export async function createReportInSupabase(payload) {
+  return createRecordInSupabase('reports', payload);
 }
 
 export async function updateOrderInSupabase(id, updates) {
