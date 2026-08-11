@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import { Outlet, Link, useLocation } from "react-router-dom";
 import { LayoutDashboard, ShoppingBag, Users, Package as PackageIcon, Store, ClipboardList, LifeBuoy, Settings as SettingsIcon, LogOut, Menu, X, Receipt, MessageCircle, Bell } from "lucide-react";
-import { base44 } from "@/api/base44Client";
 import ThemeToggle from "@/components/ThemeToggle";
+import { useAuth } from "@/lib/AuthContext";
 
 const nav = [
   { to: "/", label: "Analytics", icon: LayoutDashboard },
@@ -20,6 +20,7 @@ const nav = [
 
 export default function Layout() {
   const { pathname } = useLocation();
+  const { logout } = useAuth();
   const [open, setOpen] = useState(false);
 
   const links = (
@@ -60,7 +61,7 @@ export default function Layout() {
           {links}
         </div>
         <button
-          onClick={() => base44.auth.logout()}
+          onClick={() => logout()}
           className="flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm text-slate-400 hover:bg-white/5 hover:text-white"
         >
           <LogOut className="w-4 h-4" strokeWidth={1.75} /> Sign out
@@ -74,7 +75,7 @@ export default function Layout() {
         </Link>
         <div className="flex items-center gap-1">
           <button
-            onClick={() => base44.auth.logout()}
+            onClick={() => logout()}
             aria-label="Sign out"
             className="inline-flex items-center justify-center w-11 h-11 rounded-lg hover:bg-white/10 active:bg-white/20 active:scale-95 transition-all touch-manipulation text-slate-300"
           >
@@ -92,7 +93,7 @@ export default function Layout() {
           <div className="absolute left-0 right-0 top-full border-b border-white/10 bg-[#0B1E3F] px-4 py-3 shadow-xl max-h-[75vh] overflow-y-auto">
             {links}
             <button
-              onClick={() => base44.auth.logout()}
+              onClick={() => logout()}
               className="mt-2 flex w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm text-slate-400 hover:bg-white/5 hover:text-white"
             >
               <LogOut className="w-4 h-4" strokeWidth={1.75} /> Sign out
