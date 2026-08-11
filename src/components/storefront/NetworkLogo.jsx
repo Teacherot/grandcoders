@@ -9,15 +9,20 @@ export const NETWORK_BRAND = {
   Other: { bg: "#64748B", fg: "#FFFFFF", label: "Other", grad: ["#94A3B8", "#475569"] },
 };
 
-// Big branded logo that fills a network selector card.
-export function NetworkMark({ network }) {
+// Branded mark for network selector cards.
+export function NetworkMark({ network, compact = false }) {
   const b = NETWORK_BRAND[network] || NETWORK_BRAND.Other;
+  const mtnSize = compact ? 18 : 26;
+  const mtnBorder = compact ? 2 : 3;
+  const mtnPadding = compact ? "px-3 py-0.5" : "px-4 py-1";
+  const wordSize = compact ? (network === "AirtelTigo" ? 14 : 18) : (network === "AirtelTigo" ? 18 : 24);
+
   if (network === "MTN") {
     return (
       <div className="flex items-center justify-center w-full h-full" style={{ background: b.bg }}>
         <span
-          className="px-4 py-1 rounded-full border-[3px] italic font-black tracking-tight"
-          style={{ borderColor: b.fg, color: b.fg, fontSize: 26, fontFamily: "Inter, sans-serif" }}
+          className={`${mtnPadding} rounded-full italic font-black tracking-tight`}
+          style={{ border: `${mtnBorder}px solid ${b.fg}`, color: b.fg, fontSize: mtnSize, fontFamily: "Inter, sans-serif" }}
         >
           MTN
         </span>
@@ -29,7 +34,7 @@ export function NetworkMark({ network }) {
     <div className="flex items-center justify-center w-full h-full" style={{ background: b.bg }}>
       <span
         className="font-extrabold tracking-tight text-white"
-        style={{ fontSize: network === "AirtelTigo" ? 18 : 24, textTransform: "lowercase", fontFamily: "Inter, sans-serif" }}
+        style={{ fontSize: wordSize, textTransform: "lowercase", fontFamily: "Inter, sans-serif" }}
       >
         {word}
       </span>

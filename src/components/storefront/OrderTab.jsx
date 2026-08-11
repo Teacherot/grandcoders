@@ -91,7 +91,7 @@ export default function OrderTab({ agent, prices }) {
       </div>
 
       {nets.length > 1 && (
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 gap-2 sm:gap-3">
           {nets.map((n) => {
             const active = net === n;
             return (
@@ -99,9 +99,9 @@ export default function OrderTab({ agent, prices }) {
                 type="button"
                 key={n}
                 onClick={() => setNet(active ? "" : n)}
-                className={`relative rounded-2xl overflow-hidden aspect-square transition ${active ? "ring-2 ring-primary ring-offset-2 ring-offset-card" : "ring-1 ring-border"}`}
+                className={`relative h-16 sm:h-20 rounded-xl overflow-hidden transition ${active ? "ring-2 ring-primary ring-offset-2 ring-offset-card" : "ring-1 ring-border"}`}
               >
-                <NetworkMark network={n} />
+                <NetworkMark network={n} compact />
               </button>
             );
           })}
