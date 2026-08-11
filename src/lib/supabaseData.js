@@ -37,41 +37,30 @@ async function fallbackList(entityName, limit = 500) {
   }
 }
 
-async function writeWithFallback(tableName, method, payload, id, fallbackEntityName) {
+async function writeWithFallback(tableName, method, payload, id) {
   if (!supabase) {
-    if (method === 'create') return base44.entities[fallbackEntityName || 'Order'].create(payload);
-    if (method === 'update') return base44.entities[fallbackEntityName || 'Order'].update(id, payload);
-    if (method === 'delete') return base44.entities[fallbackEntityName || 'Order'].delete(id);
+    throw new Error(`Supabase client is not configured for ${tableName}`);
   }
 
-  try {
-    if (method === 'create') {
-      const { data, error } = await supabase.from(tableName).insert(payload).select().single();
-      if (error) throw error;
-      return data;
-    }
-
-    if (method === 'update') {
-      const { data, error } = await supabase.from(tableName).update(payload).eq('id', id).select().single();
-      if (error) throw error;
-      return data;
-    }
-
-    if (method === 'delete') {
-      const { error } = await supabase.from(tableName).delete().eq('id', id);
-      if (error) throw error;
-      return { ok: true };
-    }
-  } catch (error) {
-    console.warn(`Supabase ${tableName} ${method} failed, falling back to Base44:`, error.message);
-    if (fallbackEntityName) {
-      if (method === 'create') return base44.entities[fallbackEntityName].create(payload);
-      if (method === 'update') return base44.entities[fallbackEntityName].update(id, payload);
-      if (method === 'delete') return base44.entities[fallbackEntityName].delete(id);
-    }
+  if (method === 'create') {
+    const { data, error } = await supabase.from(tableName).insert(payload).select().single();
+    if (error) throw error;
+    return data;
   }
 
-  return null;
+  if (method === 'update') {
+    const { data, error } = await supabase.from(tableName).update(payload).eq('id', id).select().single();
+    if (error) throw error;
+    return data;
+  }
+
+  if (method === 'delete') {
+    const { error } = await supabase.from(tableName).delete().eq('id', id);
+    if (error) throw error;
+    return { ok: true };
+  }
+
+  throw new Error(`Unsupported write method: ${method}`);
 }
 
 export async function getOrdersFromSupabase() {
@@ -91,15 +80,15 @@ export async function createOrderInSupabase(payload) {
     ...payload,
     created_date: payload.created_date || payload.created_at || new Date().toISOString(),
   };
-  return writeWithFallback('orders', 'create', row, null, 'Order');
+  return writeWithFallback('orders', 'create', row, null);
 }
 
 export async function updateOrderInSupabase(id, updates) {
-  return writeWithFallback('orders', 'update', updates, id, 'Order');
+  return writeWithFallback('orders', 'update', updates, id);
 }
 
 export async function deleteOrderInSupabase(id) {
-  return writeWithFallback('orders', 'delete', null, id, 'Order');
+  return writeWithFallback('orders', 'delete', null, id);
 }
 
 export async function getReportsFromSupabase() {
@@ -122,15 +111,15 @@ export async function getPackagesFromSupabase() {
 }
 
 export async function createPackageInSupabase(payload) {
-  return writeWithFallback('packages', 'create', payload, null, 'Package');
+  return writeWithFallback('packages', 'create', payload, null);
 }
 
 export async function updatePackageInSupabase(id, updates) {
-  return writeWithFallback('packages', 'update', updates, id, 'Package');
+  return writeWithFallback('packages', 'update', updates, id);
 }
 
 export async function deletePackageInSupabase(id) {
-  return writeWithFallback('packages', 'delete', null, id, 'Package');
+  return writeWithFallback('packages', 'delete', null, id);
 }
 
 export async function bulkUpdatePackagesInSupabase(items) {
@@ -173,15 +162,15 @@ function sanitizeAgentPayload(payload = {}) {
 }
 
 export async function createAgentInSupabase(payload) {
-  return writeWithFallback('agents', 'create', sanitizeAgentPayload(payload), null, 'Agent');
+  return writeWithFallback('agents', 'create', sanitizeAgentPayload(payload), null);
 }
 
 export async function updateAgentInSupabase(id, updates) {
-  return writeWithFallback('agents', 'update', sanitizeAgentPayload(updates), id, 'Agent');
+  return writeWithFallback('agents', 'update', sanitizeAgentPayload(updates), id);
 }
 
 export async function deleteAgentInSupabase(id) {
-  return writeWithFallback('agents', 'delete', null, id, 'Agent');
+  return writeWithFallback('agents', 'delete', null, id);
 }
 
 export async function getAgentWalletsFromSupabase() {
@@ -189,11 +178,11 @@ export async function getAgentWalletsFromSupabase() {
 }
 
 export async function createAgentWalletInSupabase(payload) {
-  return writeWithFallback('agent_wallets', 'create', payload, null, 'AgentWallet');
+  return writeWithFallback('agent_wallets', 'create', payload, null);
 }
 
 export async function updateAgentWalletInSupabase(id, updates) {
-  return writeWithFallback('agent_wallets', 'update', updates, id, 'AgentWallet');
+  return writeWithFallback('agent_wallets', 'update', updates, id);
 }
 
 export async function getNotificationsFromSupabase() {
@@ -201,15 +190,15 @@ export async function getNotificationsFromSupabase() {
 }
 
 export async function createNotificationInSupabase(payload) {
-  return writeWithFallback('notifications', 'create', payload, null, 'Notification');
+  return writeWithFallback('notifications', 'create', payload, null);
 }
 
 export async function updateNotificationInSupabase(id, updates) {
-  return writeWithFallback('notifications', 'update', updates, id, 'Notification');
+  return writeWithFallback('notifications', 'update', updates, id);
 }
 
 export async function deleteNotificationInSupabase(id) {
-  return writeWithFallback('notifications', 'delete', null, id, 'Notification');
+  return writeWithFallback('notifications', 'delete', null, id);
 }
 
 export async function getChatMessagesFromSupabase() {
@@ -217,11 +206,11 @@ export async function getChatMessagesFromSupabase() {
 }
 
 export async function createChatMessageInSupabase(payload) {
-  return writeWithFallback('chat_messages', 'create', payload, null, 'ChatMessage');
+  return writeWithFallback('chat_messages', 'create', payload, null);
 }
 
 export async function updateChatMessageInSupabase(id, updates) {
-  return writeWithFallback('chat_messages', 'update', updates, id, 'ChatMessage');
+  return writeWithFallback('chat_messages', 'update', updates, id);
 }
 
 export async function getSettingsFromSupabase() {
