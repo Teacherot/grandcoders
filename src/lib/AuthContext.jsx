@@ -25,6 +25,7 @@ const buildUserFromSession = async (sessionUser) => {
     role: profile?.role || sessionUser.user_metadata?.role || 'agent',
     store_name: profile?.store_name || '',
     commission_rate: profile?.commission_rate || 10,
+    requiresSignupToken: !profile,
     profile,
   };
 };
@@ -58,7 +59,11 @@ export const AuthProvider = ({ children }) => {
         const nextUser = await buildUserFromSession(session.user);
         setUser(nextUser);
         setIsAuthenticated(true);
-        setAuthError(null);
+        if (nextUser?.requiresSignupToken) {
+          setAuthError({ type: 'signup_token_required', message: 'Sign-up token is required to finish account setup.' });
+        } else {
+          setAuthError(null);
+        }
       } else {
         setUser(null);
         setIsAuthenticated(false);
@@ -90,7 +95,11 @@ export const AuthProvider = ({ children }) => {
           const nextUser = await buildUserFromSession(session.user);
           setUser(nextUser);
           setIsAuthenticated(true);
-          setAuthError(null);
+          if (nextUser?.requiresSignupToken) {
+            setAuthError({ type: 'signup_token_required', message: 'Sign-up token is required to finish account setup.' });
+          } else {
+            setAuthError(null);
+          }
         } else {
           setUser(null);
           setIsAuthenticated(false);
@@ -143,7 +152,11 @@ export const AuthProvider = ({ children }) => {
     setUser(nextUser);
     setIsAuthenticated(true);
     setAuthChecked(true);
-    setAuthError(null);
+    if (nextUser?.requiresSignupToken) {
+      setAuthError({ type: 'signup_token_required', message: 'Sign-up token is required to finish account setup.' });
+    } else {
+      setAuthError(null);
+    }
     setIsLoadingAuth(false);
     setIsLoadingPublicSettings(false);
     return data;
@@ -169,7 +182,11 @@ export const AuthProvider = ({ children }) => {
       setUser(nextUser);
       setIsAuthenticated(Boolean(data.session));
       setAuthChecked(true);
-      setAuthError(null);
+      if (nextUser?.requiresSignupToken) {
+        setAuthError({ type: 'signup_token_required', message: 'Sign-up token is required to finish account setup.' });
+      } else {
+        setAuthError(null);
+      }
     }
 
     setIsLoadingAuth(false);

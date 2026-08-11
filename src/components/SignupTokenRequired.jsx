@@ -10,7 +10,13 @@ import { supabase } from "@/lib/supabaseClient";
 // (e.g. a direct Google sign-up that skipped the register token gate). The user
 // must enter a valid sign-up token to provision their agent account.
 export default function SignupTokenRequired() {
-  const [token, setToken] = useState("");
+  const [token, setToken] = useState(() => {
+    try {
+      return sessionStorage.getItem("pending_signup_token") || "";
+    } catch {
+      return "";
+    }
+  });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -28,6 +34,35 @@ export default function SignupTokenRequired() {
       const { data: existing, error: existingError } = await supabase.from("agents").select("id").eq("email", user.email).limit(1);
       if (existingError) throw existingError;
 
+      const enteredToken = token.trim();
+      if (!enteredToken) throw new Error("Token is required.");
+
+      const { data: settingRows, error: settingError } = await supabase
+        .from("settings")
+        .select("value")
+        .eq("key", "signup_token")
+        .limit(1);
+
+      const configuredToken = settingRows?.[0]?.value || import.meta.env.VITE_SIGNUP_TOKEN || "";
+
+      if (settingError && !import.meta.env.VITE_SIGNUP_TOKEN) {
+        throw new Error("Signup token verification is unavailable. Add a read policy for the signup_token setting or set VITE_SIGNUP_TOKEN.");
+      }
+
+      if (!configuredToken) {
+        throw new Error("Signup token is not configured by admin.");
+      }
+
+      if (enteredToken !== configuredToken) {
+        throw new Error("Invalid token code");
+      }
+
+      try {
+        sessionStorage.setItem("pending_signup_token", enteredToken);
+      } catch {
+        // Ignore storage write failures.
+      }
+
       if (!(existing || [])[0]) {
         const payload = {
           id: user.id,
@@ -41,6 +76,11 @@ export default function SignupTokenRequired() {
         };
         const { error: insertError } = await supabase.from("agents").insert(payload);
         if (insertError) throw insertError;
+      }
+      try {
+        sessionStorage.removeItem("pending_signup_token");
+      } catch {
+        // Ignore storage cleanup failures.
       }
       window.location.reload();
     } catch (err) {
