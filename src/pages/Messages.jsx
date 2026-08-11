@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { base44 } from "@/api/base44Client";
 import PageHeader from "@/components/PageHeader";
 import { createChatMessageInSupabase, getChatMessagesFromSupabase, updateChatMessageInSupabase } from "@/lib/supabaseData";
 import ChatThread from "@/components/chat/ChatThread";

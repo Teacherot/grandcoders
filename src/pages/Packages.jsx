@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import { base44 } from "@/api/base44Client";
 import { Plus, Trash2, Pencil } from "lucide-react";
 import { bulkUpdatePackagesInSupabase, createPackageInSupabase, deletePackageInSupabase, getPackagesFromSupabase, updatePackageInSupabase } from "@/lib/supabaseData";
 import { Button } from "@/components/ui/button";

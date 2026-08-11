@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import { base44 } from "@/api/base44Client";
 import { Send, Trash2 } from "lucide-react";
 import { createNotificationInSupabase, deleteNotificationInSupabase, getNotificationsFromSupabase, updateNotificationInSupabase } from "@/lib/supabaseData";
 import { Button } from "@/components/ui/button";

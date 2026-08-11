@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { base44 } from "@/api/base44Client";
 import PageHeader from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Copy, RefreshCw, Check } from "lucide-react";
 import { format } from "date-fns";
 import AgentApiDocs from "@/components/agents/AgentApiDocs";
+import { getAgentPortalData, regenerateAgentApiKey } from "@/lib/agentPortalService";
 
 const cedi = (n) => `GH₵ ${Number(n || 0).toFixed(2)}`;
 
@@ -17,8 +17,10 @@ export default function AgentApi() {
   const load = async () => {
     setLoading(true);
     try {
-      const res = await base44.functions.invoke("agentSelfService", {});
-      setData(res?.data || null);
+      const res = await getAgentPortalData();
+      setData(res || null);
+    } catch {
+      setData(null);
     } finally {
       setLoading(false);
     }
@@ -45,8 +47,8 @@ export default function AgentApi() {
     if (!confirm("Regenerate API key? The old key will stop working immediately.")) return;
     setRegen(true);
     try {
-      const res = await base44.functions.invoke("agentSelfService", { action: "regenerateKey" });
-      setData(res?.data || null);
+      const res = await regenerateAgentApiKey();
+      setData(res || null);
     } finally {
       setRegen(false);
     }

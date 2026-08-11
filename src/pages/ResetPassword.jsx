@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { base44 } from "@/api/base44Client";
+import { supabase } from "@/lib/supabaseClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,7 +25,13 @@ export default function ResetPassword() {
     }
     setLoading(true);
     try {
-      await base44.auth.resetPassword({ resetToken, newPassword });
+      if (!supabase) throw new Error("Supabase is not configured");
+      const { error: sessionError } = await supabase.auth.exchangeCodeForSession(resetToken).catch(() => ({ error: null }));
+      if (sessionError) {
+        // continue: reset links may already establish a session via hash token
+      }
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw error;
       window.location.href = "/login";
     } catch (err) {
       setError(err.message || "Failed to reset password");

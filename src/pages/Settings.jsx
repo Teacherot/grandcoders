@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { base44 } from "@/api/base44Client";
 import PageHeader from "@/components/PageHeader";
 import { getSettingsFromSupabase, saveSettingInSupabase } from "@/lib/supabaseData";
+import { runWalletReconciliation } from "@/lib/agentPortalService";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Loader2, Zap, Hand, Wallet, KeyRound, RefreshCw, Store, Scale, CheckCircle2 } from "lucide-react";
@@ -119,8 +119,8 @@ export default function Settings() {
     setReconciling(true);
     setReconcileResult(null);
     try {
-      const res = await base44.functions.invoke("reconcileWallets", {});
-      setReconcileResult(res.data || res);
+      const res = await runWalletReconciliation();
+      setReconcileResult(res || null);
     } catch (e) {
       setReconcileResult({ error: e.message || "Reconciliation failed" });
     } finally {

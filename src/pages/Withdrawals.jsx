@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { base44 } from "@/api/base44Client";
 import PageHeader from "@/components/PageHeader";
 import { Input } from "@/components/ui/input";
 import WithdrawalApprovals from "@/components/admin/WithdrawalApprovals";
 import { format } from "date-fns";
 import { Search, ArrowUpRight, Smartphone } from "lucide-react";
+import { getTransactionsFromSupabase } from "@/lib/supabaseTransactions";
 
 const cedi = (n) => `GH₵ ${Number(n || 0).toFixed(2)}`;
 
@@ -14,8 +14,15 @@ export default function Withdrawals() {
   const [q, setQ] = useState("");
 
   useEffect(() => {
-    base44.entities.WalletTransaction.list("-created_date", 200).then(setWallet).catch(() => setWallet([]));
-    base44.entities.MomoTransaction.list("-created_date", 200).then(setMomo).catch(() => setMomo([]));
+    getTransactionsFromSupabase()
+      .then((data) => {
+        setWallet(data.wallet || []);
+        setMomo(data.momo || []);
+      })
+      .catch(() => {
+        setWallet([]);
+        setMomo([]);
+      });
   }, []);
 
   const filter = (list) => {

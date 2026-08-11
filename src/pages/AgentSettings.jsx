@@ -3,7 +3,8 @@ import { useRole } from "@/components/RoleShell";
 import PageHeader from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { base44 } from "@/api/base44Client";
+import { supabase } from "@/lib/supabaseClient";
+import { updateAgentInSupabase } from "@/lib/supabaseData";
 import { Store, User, Phone, Mail, MapPin, KeyRound, Check, Loader2 } from "lucide-react";
 
 export default function AgentSettings() {
@@ -20,7 +21,7 @@ export default function AgentSettings() {
     setSavingPhone(true);
     setPhoneMsg("");
     try {
-      await base44.entities.Agent.update(agent.id, { phone: phoneValue.trim() });
+      await updateAgentInSupabase(agent.id, { phone: phoneValue.trim() });
       setPhoneMsg("Saved. Use this number as your MoMo reference to auto-top-up.");
       setEditingPhone(false);
     } catch (err) {
@@ -34,7 +35,11 @@ export default function AgentSettings() {
     if (!agent?.email) return;
     setSending(true);
     try {
-      await base44.auth.resetPasswordRequest(agent.email);
+      if (supabase) {
+        await supabase.auth.resetPasswordForEmail(agent.email, {
+          redirectTo: `${window.location.origin}/reset-password`,
+        });
+      }
     } catch {
       /* always show generic success */
     } finally {
