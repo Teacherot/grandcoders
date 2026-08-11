@@ -18,10 +18,18 @@ export default function StoreWithdrawals({ agent }) {
   const [converting, setConverting] = useState(false);
 
   const load = async () => {
-    const response = await fetch(`/api/agents/${agent.id}/payout-data`);
-    const payload = await response.json();
-    setOrders(payload?.orders || []);
-    setWithdrawals(payload?.withdrawals || []);
+    try {
+      const response = await fetch(`/api/agents/${agent.id}/payout-data`);
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(payload?.error || 'Unable to load payout data');
+      }
+      setOrders(payload?.orders || []);
+      setWithdrawals(payload?.withdrawals || []);
+    } catch (error) {
+      console.error('Could not load payout data', error);
+      toast({ variant: 'destructive', title: 'Payout data unavailable', description: error?.message || 'Unable to load payout data.' });
+    }
   };
 
   const loadWallet = async () => {
@@ -29,9 +37,13 @@ export default function StoreWithdrawals({ agent }) {
     try {
       const response = await fetch(`/api/agents/${agent.id}/wallet-history`);
       const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(payload?.error || 'Unable to load wallet history');
+      }
       setWalletData(payload || null);
     } catch (error) {
       console.error("Could not load wallet balance", error);
+      toast({ variant: 'destructive', title: 'Wallet unavailable', description: error?.message || 'Unable to load wallet history.' });
     } finally {
       setWalletLoading(false);
     }

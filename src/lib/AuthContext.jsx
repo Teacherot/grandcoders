@@ -131,7 +131,13 @@ export const AuthProvider = ({ children }) => {
 
     setIsLoadingAuth(true);
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) throw error;
+    if (error) {
+      const message = error?.message || 'Unable to sign in';
+      if (message.includes('email_not_confirmed') || message.includes('Email not confirmed')) {
+        throw new Error('Please confirm your email before signing in. Check your inbox for the confirmation link.');
+      }
+      throw new Error(message);
+    }
 
     const nextUser = await buildUserFromSession(data?.user);
     setUser(nextUser);
@@ -150,7 +156,13 @@ export const AuthProvider = ({ children }) => {
 
     setIsLoadingAuth(true);
     const { data, error } = await supabase.auth.signUp({ email, password });
-    if (error) throw error;
+    if (error) {
+      const message = error?.message || 'Unable to create account';
+      if (message.includes('email_not_confirmed') || message.includes('Email not confirmed')) {
+        throw new Error('Please confirm your email before signing in. Check your inbox for the confirmation link.');
+      }
+      throw new Error(message);
+    }
 
     if (data?.user) {
       const nextUser = await buildUserFromSession(data.user);
@@ -178,7 +190,8 @@ export const AuthProvider = ({ children }) => {
       setAuthChecked(true);
       setAuthError(null);
       if (shouldRedirect) {
-        window.location.href = '/login';
+        const target = '/login';
+        window.location.replace(target);
       }
     }
   };

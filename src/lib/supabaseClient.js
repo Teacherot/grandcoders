@@ -7,6 +7,14 @@ export const supabase = supabaseUrl && supabaseAnonKey
   ? createClient(supabaseUrl, supabaseAnonKey)
   : null;
 
+export function getSupabaseConfigStatus() {
+  if (!supabaseUrl || !supabaseAnonKey) {
+    return { ok: false, reason: 'missing-env', message: 'Supabase environment variables are not configured.' };
+  }
+
+  return { ok: true, reason: 'configured', message: 'Supabase client is configured.' };
+}
+
 export async function testSupabaseConnection() {
   if (!supabase) return { ok: false, reason: 'missing-env' };
 

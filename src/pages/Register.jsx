@@ -31,7 +31,12 @@ export default function Register() {
         navigate(safeReturnTo() || "/");
       }
     } catch (err) {
-      setError(err?.message || "Registration failed");
+      const message = err?.message || "Registration failed";
+      if (message.includes("confirm your email") || message.includes("email_not_confirmed")) {
+        setError("A confirmation email was sent. Please confirm your email address before signing in.");
+      } else {
+        setError(message);
+      }
     } finally {
       setLoading(false);
     }

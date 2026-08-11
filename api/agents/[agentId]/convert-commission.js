@@ -1,46 +1,19 @@
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { createClient } from '@supabase/supabase-js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const dataFile = path.join(__dirname, '..', '..', '..', 'data', 'backend-store.json');
+const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-function loadStore() {
-  if (!fs.existsSync(dataFile)) {
-    return { agents: {} };
-  }
-  try {
-    return JSON.parse(fs.readFileSync(dataFile, 'utf8'));
-  } catch {
-    return { agents: {} };
-  }
-}
+const supabase = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null;
 
-function createDefaultAgentState(agentId) {
-  return {
-    id: agentId,
-    balance: 220,
-    transactions: [],
-    momo_transactions: [],
-    withdrawals: [],
-  };
-}
-
-function getAgentState(store, agentId) {
-  if (!store.agents[agentId]) {
-    store.agents[agentId] = createDefaultAgentState(agentId);
-    fs.mkdirSync(path.dirname(dataFile), { recursive: true });
-    fs.writeFileSync(dataFile, JSON.stringify(store, null, 2));
-  }
-  return store.agents[agentId];
-}
-
-export default function handler(req, res) {
+export default async function handler(req, res) {
   res.setHeader('Content-Type', 'application/json');
-  const store = loadStore();
+
+  if (!supabase) {
+    res.status(200).json({ ok: true, balance: 0 });
+    return;
+  }
+
   const agentId = req.query.agentId || 'demo-agent';
-  const agentState = getAgentState(store, agentId);
 
   if (req.method === 'POST') {
     let body = {};
@@ -49,27 +22,29 @@ export default function handler(req, res) {
     } catch {
       body = {};
     }
+
     const amount = Number(body.amount || 0);
     if (!amount || amount <= 0) {
       res.status(400).json({ error: 'Amount must be greater than zero.' });
       return;
     }
-    const previousBalance = Number(agentState.balance || 0);
-    const newBalance = previousBalance + amount;
-    agentState.balance = newBalance;
-    agentState.transactions = [
-      ...(agentState.transactions || []),
-      {
-        id: `tx-${Date.now()}`,
-        type: 'adjustment',
-        amount,
-        notes: 'Commission converted to wallet',
-        created_date: new Date().toISOString(),
-        balance_after: newBalance,
-      },
-    ];
-    fs.writeFileSync(dataFile, JSON.stringify(store, null, 2));
-    res.status(200).json({ ok: true, balance: newBalance });
+
+    const { data, error } = await supabase.from('wallet_transactions').insert({
+      id: `tx-${Date.now()}`,
+      agent_id: agentId,
+      type: 'adjustment',
+      amount,
+      notes: 'Commission converted to wallet',
+      balance_after: amount,
+      created_date: new Date().toISOString(),
+    }).select().single();
+
+    if (error) {
+      res.status(500).json({ error: error.message });
+      return;
+    }
+
+    res.status(200).json({ ok: true, balance: amount, transaction: data });
     return;
   }
 

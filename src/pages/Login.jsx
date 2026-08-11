@@ -7,12 +7,15 @@ import { LogIn, Mail, Lock, Loader2 } from "lucide-react";
 import AuthLayout from "@/components/AuthLayout";
 import { safeReturnTo } from "@/lib/authReturnTo";
 import { useAuth } from "@/lib/AuthContext";
+import { supabase } from "@/lib/supabaseClient";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
   const navigate = useNavigate();
   const { login } = useAuth();
   // Post-login destination (e.g. the MCP OAuth consent page sends users here
@@ -22,14 +25,44 @@ export default function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    setSuccess("");
     setLoading(true);
     try {
       await login(email, password);
       navigate(returnTo || '/');
     } catch (err) {
-      setError(err?.message || "Invalid email or password");
+      const message = err?.message || "Invalid email or password";
+      if (message.includes("confirm your email") || message.includes("email_not_confirmed")) {
+        setError("Your email address has not been confirmed yet. Please open the confirmation link in your inbox and try again.");
+      } else {
+        setError(message);
+      }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const resendConfirmation = async () => {
+    if (!email) {
+      setError("Please enter your email address first.");
+      return;
+    }
+
+    setError("");
+    setSuccess("");
+    setResending(true);
+    try {
+      if (!supabase) {
+        throw new Error("Supabase is not configured.");
+      }
+
+      const { error } = await supabase.auth.resend({ type: 'signup', email });
+      if (error) throw error;
+      setSuccess("A new confirmation email has been sent. Please check your inbox.");
+    } catch (err) {
+      setError(err?.message || "Unable to resend confirmation email.");
+    } finally {
+      setResending(false);
     }
   };
 
@@ -53,6 +86,11 @@ export default function Login() {
       {error && (
         <div className="mb-4 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
           {error}
+        </div>
+      )}
+      {success && (
+        <div className="mb-4 p-3 rounded-lg bg-emerald-50 text-emerald-700 text-sm dark:bg-emerald-950/30 dark:text-emerald-400">
+          {success}
         </div>
       )}
 
@@ -103,6 +141,16 @@ export default function Login() {
             </>
           ) : (
             "Log in"
+          )}
+        </Button>
+        <Button type="button" variant="outline" className="w-full h-10" onClick={resendConfirmation} disabled={resending || !email}>
+          {resending ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Sending...
+            </>
+          ) : (
+            "Resend confirmation email"
           )}
         </Button>
       </form>

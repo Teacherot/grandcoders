@@ -30,7 +30,13 @@ export default function RoleShell() {
   useEffect(() => {
     let active = true;
     (async () => {
-      if (!user?.email) { setLoading(false); return; }
+      if (!user?.email) {
+        if (active) {
+          setAgent(null);
+          setLoading(false);
+        }
+        return;
+      }
 
       try {
         if (user.role === "admin") {
@@ -40,23 +46,28 @@ export default function RoleShell() {
 
         let profile = null;
         if (supabase) {
-          const { data, error } = await supabase.from('agents').select('*').eq('email', user.email).limit(1);
-          if (!error && data?.[0]) {
-            profile = data[0];
+          try {
+            const { data, error } = await supabase.from('agents').select('*').eq('email', user.email).limit(1);
+            if (!error && data?.[0]) {
+              profile = data[0];
+            }
+          } catch (profileError) {
+            console.warn('Unable to resolve agent profile', profileError);
           }
         }
 
         if (active) {
           setAgent(profile || null);
         }
-      } catch {
+      } catch (error) {
+        console.warn('RoleShell initialization failed', error);
         if (active) setAgent(null);
       } finally {
         if (active) setLoading(false);
       }
     })();
     return () => { active = false; };
-  }, [user?.email]);
+  }, [user?.email, user?.role]);
 
   const role = user?.role === "admin" ? "admin" : "agent";
 

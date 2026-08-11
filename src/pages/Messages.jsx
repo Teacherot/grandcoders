@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import PageHeader from "@/components/PageHeader";
+import { createChatMessageInSupabase, getChatMessagesFromSupabase, updateChatMessageInSupabase } from "@/lib/supabaseData";
 import ChatThread from "@/components/chat/ChatThread";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -13,12 +14,13 @@ export default function Messages() {
   const [q, setQ] = useState("");
   const [sending, setSending] = useState(false);
 
-  const load = () => base44.entities.ChatMessage.list("created_date", 1000).then(setAll);
+  const load = async () => {
+    const rows = await getChatMessagesFromSupabase();
+    setAll(rows);
+  };
 
   useEffect(() => {
     load();
-    const unsub = base44.entities.ChatMessage.subscribe(() => load());
-    return unsub;
   }, []);
 
   const conversations = useMemo(() => {
@@ -45,7 +47,7 @@ export default function Messages() {
     selected.messages
       .filter((m) => m.sender === "agent" && !m.read)
       .forEach((m) => {
-        base44.entities.ChatMessage.update(m.id, { read: true }).catch(() => {});
+        updateChatMessageInSupabase(m.id, { read: true }).catch(() => {});
       });
   }, [selectedId, all]);
 
@@ -53,7 +55,7 @@ export default function Messages() {
     if (!selected) return;
     setSending(true);
     try {
-      await base44.entities.ChatMessage.create({
+      await createChatMessageInSupabase({
         agent_id: selected.agent_id,
         agent_name: selected.agent_name,
         agent_email: selected.agent_email,

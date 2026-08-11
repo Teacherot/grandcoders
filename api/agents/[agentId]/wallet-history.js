@@ -1,76 +1,28 @@
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { createClient } from '@supabase/supabase-js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const dataFile = path.join(__dirname, '..', '..', '..', 'data', 'backend-store.json');
+const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-function loadStore() {
-  if (!fs.existsSync(dataFile)) {
-    return { agents: {} };
-  }
-  try {
-    return JSON.parse(fs.readFileSync(dataFile, 'utf8'));
-  } catch {
-    return { agents: {} };
-  }
-}
+const supabase = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null;
 
-function createDefaultAgentState(agentId) {
-  const now = new Date().toISOString();
-  return {
-    id: agentId,
-    balance: 220,
-    transactions: [
-      {
-        id: 'tx-topup-1',
-        type: 'top_up',
-        amount: 200,
-        notes: 'Mobile money top-up',
-        created_date: now,
-        balance_after: 200,
-      },
-      {
-        id: 'tx-adjustment-1',
-        type: 'adjustment',
-        amount: 20,
-        notes: 'Commission converted to wallet',
-        created_date: now,
-        balance_after: 220,
-      },
-    ],
-    momo_transactions: [
-      {
-        id: 'momo-1',
-        transaction_id: 'MMO-1001',
-        amount: 200,
-        status: 'claimed',
-        network: 'MTN',
-        sender_number: '0244000000',
-        created_date: now,
-      },
-    ],
-  };
-}
+const toNumber = (value) => Number(value || 0);
 
-function getAgentState(store, agentId) {
-  if (!store.agents[agentId]) {
-    store.agents[agentId] = createDefaultAgentState(agentId);
-    fs.mkdirSync(path.dirname(dataFile), { recursive: true });
-    fs.writeFileSync(dataFile, JSON.stringify(store, null, 2));
-  }
-  return store.agents[agentId];
-}
-
-export default function handler(req, res) {
+export default async function handler(req, res) {
   res.setHeader('Content-Type', 'application/json');
-  const store = loadStore();
+
+  if (!supabase) {
+    res.status(200).json({ balance: 0, transactions: [], momo_transactions: [] });
+    return;
+  }
+
   const agentId = req.query.agentId || 'demo-agent';
-  const agentState = getAgentState(store, agentId);
-  res.status(200).json({
-    balance: agentState.balance || 0,
-    transactions: agentState.transactions || [],
-    momo_transactions: agentState.momo_transactions || [],
-  });
+  const { data, error } = await supabase.from('wallet_transactions').select('*').eq('agent_id', agentId).order('created_date', { ascending: false });
+
+  if (error) {
+    res.status(500).json({ error: error.message });
+    return;
+  }
+
+  const balance = (data || []).reduce((sum, item) => sum + toNumber(item.amount), 0);
+  res.status(200).json({ balance, transactions: data || [], momo_transactions: [] });
 }

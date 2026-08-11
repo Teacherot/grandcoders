@@ -44,19 +44,28 @@ async function writeWithFallback(tableName, method, payload, id) {
 
   if (method === 'create') {
     const { data, error } = await supabase.from(tableName).insert(payload).select().single();
-    if (error) throw error;
+    if (error) {
+      const message = error?.message || 'Supabase insert failed';
+      throw new Error(`${tableName} insert failed: ${message}`);
+    }
     return data;
   }
 
   if (method === 'update') {
     const { data, error } = await supabase.from(tableName).update(payload).eq('id', id).select().single();
-    if (error) throw error;
+    if (error) {
+      const message = error?.message || 'Supabase update failed';
+      throw new Error(`${tableName} update failed: ${message}`);
+    }
     return data;
   }
 
   if (method === 'delete') {
     const { error } = await supabase.from(tableName).delete().eq('id', id);
-    if (error) throw error;
+    if (error) {
+      const message = error?.message || 'Supabase delete failed';
+      throw new Error(`${tableName} delete failed: ${message}`);
+    }
     return { ok: true };
   }
 

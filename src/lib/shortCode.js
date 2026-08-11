@@ -1,7 +1,20 @@
 import { base44 } from "@/api/base44Client";
+import { getOrdersFromSupabase } from "@/lib/supabaseData";
 
 export async function nextCode(entityName, prefix) {
-  const all = await base44.entities[entityName].list("-created_date", 5000);
+  let all = [];
+
+  if (entityName === "Order") {
+    all = await getOrdersFromSupabase();
+  } else {
+    try {
+      all = await base44.entities[entityName].list("-created_date", 5000);
+    } catch (error) {
+      console.warn("Code lookup fallback failed:", error);
+      all = [];
+    }
+  }
+
   let max = 0;
   all.forEach((r) => {
     const m = typeof r.code === "string" ? r.code.match(/(\d+)\s*$/) : null;
@@ -11,7 +24,19 @@ export async function nextCode(entityName, prefix) {
 }
 
 export async function nextCodes(entityName, prefix, count) {
-  const all = await base44.entities[entityName].list("-created_date", 5000);
+  let all = [];
+
+  if (entityName === "Order") {
+    all = await getOrdersFromSupabase();
+  } else {
+    try {
+      all = await base44.entities[entityName].list("-created_date", 5000);
+    } catch (error) {
+      console.warn("Code lookup fallback failed:", error);
+      all = [];
+    }
+  }
+
   let max = 0;
   all.forEach((r) => {
     const m = typeof r.code === "string" ? r.code.match(/(\d+)\s*$/) : null;

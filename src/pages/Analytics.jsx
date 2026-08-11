@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { format, subDays, isAfter } from "date-fns";
+import { getOrdersFromSupabase } from "@/lib/supabaseData";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import PageHeader from "@/components/PageHeader";
 import StatCard from "@/components/StatCard";
@@ -19,10 +20,19 @@ export default function Analytics() {
   const [gmplPricing, setGmplPricing] = useState(null);
 
   useEffect(() => {
-    base44.entities.Order.list("-created_date", 500).then(setOrders);
-    base44.entities.Agent.list().then(setAgents);
-    base44.entities.Package.list().then(setPackages);
-    base44.functions.invoke("getGmplPricing", {}).then((r) => setGmplPricing(r.data?.pricing || [])).catch(() => setGmplPricing([]));
+    const load = async () => {
+      const [orderRows] = await Promise.all([
+        getOrdersFromSupabase(),
+        base44.entities.Agent.list().catch(() => []),
+        base44.entities.Package.list().catch(() => []),
+      ]);
+      setOrders(orderRows);
+      setAgents(await base44.entities.Agent.list().catch(() => []));
+      setPackages(await base44.entities.Package.list().catch(() => []));
+      base44.functions.invoke("getGmplPricing", {}).then((r) => setGmplPricing(r.data?.pricing || [])).catch(() => setGmplPricing([]));
+    };
+
+    load();
   }, []);
 
   if (!orders || !gmplPricing) return <p className="text-sm text-muted-foreground">Loading…</p>;

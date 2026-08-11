@@ -14,6 +14,7 @@ import OrderEvidence from "@/components/orders/OrderEvidence";
 import { nextCode } from "@/lib/shortCode";
 import { pushOrderToGmpl } from "@/lib/gmpl";
 import { toast } from "@/components/ui/use-toast";
+import { createOrderInSupabase, deleteOrderInSupabase, getOrdersFromSupabase, updateOrderInSupabase } from "@/lib/supabaseData";
 
 export default function Orders() {
   const [orders, setOrders] = useState(null);
@@ -36,15 +37,18 @@ export default function Orders() {
     base44.entities.Agent.list().then(setAgents);
   };
 
-  const load = () => base44.entities.Order.list("-created_date", 300).then(setOrders);
+  const load = async () => {
+    const rows = await getOrdersFromSupabase();
+    setOrders(rows);
+  };
 
   useEffect(() => { load(); }, []);
 
   const save = async (data) => {
     if (editing) {
-      await base44.entities.Order.update(editing.id, data);
+      await updateOrderInSupabase(editing.id, data);
     } else {
-      const o = await base44.entities.Order.create({ ...data, source: "admin", code: await nextCode("Order", "O") });
+      const o = await createOrderInSupabase({ ...data, source: "admin", code: await nextCode("Order", "O") });
       const res = await pushOrderToGmpl(o);
       if (res?.ok) toast({ title: "Order placed", description: `${o.package_name || "Bundle"} → ${o.recipient_number} is ${res.status}.` });
     }
@@ -54,7 +58,7 @@ export default function Orders() {
   };
 
   const remove = async (id) => {
-    await base44.entities.Order.delete(id);
+    await deleteOrderInSupabase(id);
     load();
   };
 

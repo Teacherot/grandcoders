@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import PageHeader from "@/components/PageHeader";
+import { getOrdersFromSupabase, getReportsFromSupabase, updateOrderInSupabase, updateReportInSupabase } from "@/lib/supabaseData";
 import StatusBadge from "@/components/StatusBadge";
 import NetworkBadge from "@/components/NetworkBadge";
 import { Button } from "@/components/ui/button";
@@ -35,8 +36,8 @@ export default function Reports() {
   const load = async () => {
     setLoading(true);
     const [rs, os] = await Promise.all([
-      base44.entities.Report.list("-created_date", 200),
-      base44.entities.Order.list("-created_date", 500),
+      getReportsFromSupabase(),
+      getOrdersFromSupabase(),
     ]);
     setReports(rs);
     setOrders(os);
@@ -65,9 +66,9 @@ export default function Reports() {
     if (!r) { setUploadingId(null); return; }
     try {
       const { file_url } = await base44.integrations.Core.UploadFile({ file });
-      await base44.entities.Report.update(r.id, { evidence_url: file_url });
+      await updateReportInSupabase(r.id, { evidence_url: file_url });
       const o = orderFor(r);
-      if (o) await base44.entities.Order.update(o.id, { evidence_url: file_url });
+      if (o) await updateOrderInSupabase(o.id, { evidence_url: file_url });
       await load();
     } catch (err) {
       console.error(err);
@@ -77,9 +78,9 @@ export default function Reports() {
   };
 
   const removeEvidence = async (r) => {
-    await base44.entities.Report.update(r.id, { evidence_url: "" });
+    await updateReportInSupabase(r.id, { evidence_url: "" });
     const o = orderFor(r);
-    if (o) await base44.entities.Order.update(o.id, { evidence_url: "" });
+    if (o) await updateOrderInSupabase(o.id, { evidence_url: "" });
     load();
   };
 
@@ -94,14 +95,14 @@ export default function Reports() {
     if (!resolving) return;
     setBusy(true);
     try {
-      await base44.entities.Report.update(resolving.id, {
+      await updateReportInSupabase(resolving.id, {
         status: "resolved",
         resolution,
         new_order_status: newStatus,
       });
       if (resolving.order_id && newStatus) {
         const target = orders.find((o) => o.id === resolving.order_id || o.code === resolving.order_id || o.reference === resolving.order_id);
-        if (target) await base44.entities.Order.update(target.id, { status: newStatus });
+        if (target) await updateOrderInSupabase(target.id, { status: newStatus });
       }
       await load();
       closeResolve();
@@ -111,7 +112,7 @@ export default function Reports() {
   };
 
   const setReviewing = async (r) => {
-    await base44.entities.Report.update(r.id, { status: "reviewing" });
+    await updateReportInSupabase(r.id, { status: "reviewing" });
     load();
   };
 

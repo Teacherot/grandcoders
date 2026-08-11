@@ -50,7 +50,8 @@ export default function Agents() {
       await load();
     } catch (error) {
       console.error('Agent save failed', error);
-      alert(error?.message || 'Unable to save agent.');
+      const message = error?.message || 'Unable to save agent.';
+      alert(`Could not save agent.\n${message}`);
     }
   };
 

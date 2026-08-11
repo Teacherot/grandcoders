@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import PageHeader from "@/components/PageHeader";
+import { getSettingsFromSupabase, saveSettingInSupabase } from "@/lib/supabaseData";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Loader2, Zap, Hand, Wallet, KeyRound, RefreshCw, Store, Scale, CheckCircle2 } from "lucide-react";
@@ -28,23 +29,20 @@ export default function Settings() {
   const [reconcileResult, setReconcileResult] = useState(null);
 
   const load = async () => {
-    const rows = await base44.entities.Setting.filter({ key: KEY });
-    const r = rows[0];
+    const rows = await getSettingsFromSupabase();
+    const r = rows.find((row) => row.key === KEY);
     setRecId(r?.id || null);
     setVal(r ? r.value === "true" : true);
 
-    const trows = await base44.entities.Setting.filter({ key: THRESHOLD_KEY });
-    const t = trows[0];
+    const t = rows.find((row) => row.key === THRESHOLD_KEY);
     setThresholdId(t?.id || null);
     setThreshold(t ? Number(t.value) : 20);
 
-    const srows = await base44.entities.Setting.filter({ key: SIGNUP_KEY });
-    const s = srows[0];
+    const s = rows.find((row) => row.key === SIGNUP_KEY);
     setSignupId(s?.id || null);
     setSignupToken(s ? s.value : "");
 
-    const strows = await base44.entities.Setting.filter({ key: STORES_KEY });
-    const st = strows[0];
+    const st = rows.find((row) => row.key === STORES_KEY);
     setStoresId(st?.id || null);
     setStoresPaused(st ? st.value === "true" : false);
   };
@@ -54,9 +52,9 @@ export default function Settings() {
     setVal(next);
     setSaving(true);
     try {
-      if (recId) await base44.entities.Setting.update(recId, { value: String(next) });
+      if (recId) await saveSettingInSupabase(KEY, String(next), "Automatic GMPL delivery");
       else {
-        const created = await base44.entities.Setting.create({ key: KEY, value: String(next), label: "Automatic GMPL delivery" });
+        const created = await saveSettingInSupabase(KEY, String(next), "Automatic GMPL delivery");
         setRecId(created.id);
       }
     } catch (e) {
@@ -71,9 +69,9 @@ export default function Settings() {
     setThreshold(n);
     setSavingThreshold(true);
     try {
-      if (thresholdId) await base44.entities.Setting.update(thresholdId, { value: String(n) });
+      if (thresholdId) await saveSettingInSupabase(THRESHOLD_KEY, String(n), "Low wallet balance threshold (GHS)");
       else {
-        const created = await base44.entities.Setting.create({ key: THRESHOLD_KEY, value: String(n), label: "Low wallet balance threshold (GHS)" });
+        const created = await saveSettingInSupabase(THRESHOLD_KEY, String(n), "Low wallet balance threshold (GHS)");
         setThresholdId(created.id);
       }
     } finally {
@@ -86,9 +84,9 @@ export default function Settings() {
     setSignupToken(v);
     setSavingSignup(true);
     try {
-      if (signupId) await base44.entities.Setting.update(signupId, { value: v });
+      if (signupId) await saveSettingInSupabase(SIGNUP_KEY, v, "Sign-up access token");
       else {
-        const created = await base44.entities.Setting.create({ key: SIGNUP_KEY, value: v, label: "Sign-up access token" });
+        const created = await saveSettingInSupabase(SIGNUP_KEY, v, "Sign-up access token");
         setSignupId(created.id);
       }
     } finally {
@@ -105,9 +103,9 @@ export default function Settings() {
     setStoresPaused(next);
     setSavingStores(true);
     try {
-      if (storesId) await base44.entities.Setting.update(storesId, { value: String(next) });
+      if (storesId) await saveSettingInSupabase(STORES_KEY, String(next), "Pause all stores");
       else {
-        const created = await base44.entities.Setting.create({ key: STORES_KEY, value: String(next), label: "Pause all stores" });
+        const created = await saveSettingInSupabase(STORES_KEY, String(next), "Pause all stores");
         setStoresId(created.id);
       }
     } catch (e) {

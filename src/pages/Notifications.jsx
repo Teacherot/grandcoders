@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { Send, Trash2 } from "lucide-react";
+import { createNotificationInSupabase, deleteNotificationInSupabase, getNotificationsFromSupabase, updateNotificationInSupabase } from "@/lib/supabaseData";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,7 +22,10 @@ export default function Notifications() {
   const [type, setType] = useState("info");
   const [saving, setSaving] = useState(false);
 
-  const load = () => base44.entities.Notification.list("-created_date", 100).then(setItems);
+  const load = async () => {
+    const rows = await getNotificationsFromSupabase();
+    setItems(rows);
+  };
   useEffect(() => { load(); }, []);
 
   const send = async (e) => {
@@ -29,14 +33,14 @@ export default function Notifications() {
     if (!title.trim() || !message.trim()) return;
     setSaving(true);
     try {
-      await base44.entities.Notification.create({ title: title.trim(), message: message.trim(), type, active: true });
+      await createNotificationInSupabase({ title: title.trim(), message: message.trim(), type, active: true });
       setTitle(""); setMessage(""); setType("info");
       load();
     } finally { setSaving(false); }
   };
 
-  const toggle = async (n) => { await base44.entities.Notification.update(n.id, { active: !n.active }); load(); };
-  const remove = async (id) => { await base44.entities.Notification.delete(id); load(); };
+  const toggle = async (n) => { await updateNotificationInSupabase(n.id, { active: !n.active }); load(); };
+  const remove = async (id) => { await deleteNotificationInSupabase(id); load(); };
 
   const selCls = "h-9 w-full rounded-md border border-input bg-card px-3 text-sm text-foreground";
 

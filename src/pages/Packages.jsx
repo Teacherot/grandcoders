@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { Plus, Trash2, Pencil } from "lucide-react";
+import { bulkUpdatePackagesInSupabase, createPackageInSupabase, deletePackageInSupabase, getPackagesFromSupabase, updatePackageInSupabase } from "@/lib/supabaseData";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -18,26 +19,29 @@ export default function Packages() {
   const [network, setNetwork] = useState("All");
   const [toggling, setToggling] = useState(false);
 
-  const load = () => base44.entities.Package.list("-created_date").then(setPackages);
+  const load = async () => {
+    const rows = await getPackagesFromSupabase();
+    setPackages(rows);
+  };
   useEffect(() => { load(); }, []);
 
   const save = async (data) => {
-    if (editing) await base44.entities.Package.update(editing.id, data);
-    else await base44.entities.Package.create({ ...data, code: await nextCode("Package", "P") });
+    if (editing) await updatePackageInSupabase(editing.id, data);
+    else await createPackageInSupabase({ ...data, code: await nextCode("Package", "P") });
     setOpen(false);
     setEditing(null);
     load();
   };
 
-  const toggle = async (p, v) => { await base44.entities.Package.update(p.id, { active: v }); load(); };
-  const remove = async (id) => { await base44.entities.Package.delete(id); load(); };
+  const toggle = async (p, v) => { await updatePackageInSupabase(p.id, { active: v }); load(); };
+  const remove = async (id) => { await deletePackageInSupabase(id); load(); };
 
   const allActive = packages?.length ? packages.every((p) => p.active) : false;
   const setAllAvailable = async (v) => {
     if (!packages?.length) return;
     setToggling(true);
     try {
-      await base44.entities.Package.bulkUpdate(packages.map((p) => ({ id: p.id, active: v })));
+      await bulkUpdatePackagesInSupabase(packages.map((p) => ({ id: p.id, active: v })));
       await load();
     } finally { setToggling(false); }
   };

@@ -1,46 +1,19 @@
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { createClient } from '@supabase/supabase-js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const dataFile = path.join(__dirname, '..', '..', '..', 'data', 'backend-store.json');
+const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-function loadStore() {
-  if (!fs.existsSync(dataFile)) {
-    return { agents: {} };
-  }
-  try {
-    return JSON.parse(fs.readFileSync(dataFile, 'utf8'));
-  } catch {
-    return { agents: {} };
-  }
-}
+const supabase = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null;
 
-function createDefaultAgentState(agentId) {
-  return {
-    id: agentId,
-    balance: 220,
-    transactions: [],
-    momo_transactions: [],
-    withdrawals: [],
-  };
-}
-
-function getAgentState(store, agentId) {
-  if (!store.agents[agentId]) {
-    store.agents[agentId] = createDefaultAgentState(agentId);
-    fs.mkdirSync(path.dirname(dataFile), { recursive: true });
-    fs.writeFileSync(dataFile, JSON.stringify(store, null, 2));
-  }
-  return store.agents[agentId];
-}
-
-export default function handler(req, res) {
+export default async function handler(req, res) {
   res.setHeader('Content-Type', 'application/json');
-  const store = loadStore();
+
+  if (!supabase) {
+    res.status(200).json({ ok: true, withdrawal: null });
+    return;
+  }
+
   const agentId = req.query.agentId || 'demo-agent';
-  const agentState = getAgentState(store, agentId);
 
   if (req.method === 'POST') {
     let body = {};
@@ -49,24 +22,37 @@ export default function handler(req, res) {
     } catch {
       body = {};
     }
+
     const amount = Number(body.amount || 0);
     if (!amount || amount <= 0) {
       res.status(400).json({ error: 'Amount must be greater than zero.' });
       return;
     }
-    const withdrawal = {
+
+    const { data, error } = await supabase.from('withdrawals').insert({
       id: `wd-${Date.now()}`,
+      agent_id: agentId,
       amount,
       method: body.method || 'momo',
       account_info: body.account_info || '',
       status: 'pending',
       created_date: new Date().toISOString(),
-    };
-    agentState.withdrawals = [...(agentState.withdrawals || []), withdrawal];
-    fs.writeFileSync(dataFile, JSON.stringify(store, null, 2));
-    res.status(200).json({ ok: true, withdrawal });
+    }).select().single();
+
+    if (error) {
+      res.status(500).json({ error: error.message });
+      return;
+    }
+
+    res.status(200).json({ ok: true, withdrawal: data });
     return;
   }
 
-  res.status(405).json({ error: 'Method not allowed' });
+  const { data, error } = await supabase.from('withdrawals').select('*').eq('agent_id', agentId).order('created_date', { ascending: false });
+  if (error) {
+    res.status(500).json({ error: error.message });
+    return;
+  }
+
+  res.status(200).json({ withdrawals: data || [] });
 }
