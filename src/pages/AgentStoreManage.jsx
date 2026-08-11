@@ -1,15 +1,16 @@
 import React, { useState, useCallback } from "react";
-import { base44 } from "@/api/base44Client";
 import { useRole } from "@/components/RoleShell";
 import PageHeader from "@/components/PageHeader";
 import StoreCustomise from "@/components/agents/StoreCustomise";
+import { getAgentsFromSupabaseLive } from "@/lib/supabaseData";
 
 export default function AgentStoreManage() {
   const { agent } = useRole();
   const [current, setCurrent] = useState(agent);
 
   const refresh = useCallback(async () => {
-    const updated = await base44.entities.Agent.get(agent.id);
+    const rows = await getAgentsFromSupabaseLive().catch(() => []);
+    const updated = (rows || []).find((row) => row.id === agent.id) || agent;
     setCurrent(updated);
   }, [agent?.id]);
 

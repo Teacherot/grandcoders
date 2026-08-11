@@ -1,18 +1,20 @@
 import React, { useEffect, useState } from "react";
-import { base44 } from "@/api/base44Client";
 import PageHeader from "@/components/PageHeader";
 import StoreCustomise from "@/components/agents/StoreCustomise";
 import StorePrices from "@/components/agents/StorePrices";
 import StoreWithdrawals from "@/components/agents/StoreWithdrawals";
+import { getAgentsFromSupabaseLive } from "@/lib/supabaseData";
 
 export default function AgentStore() {
   const [agents, setAgents] = useState(null);
   const [agentId, setAgentId] = useState("");
   const [tab, setTab] = useState("customise");
 
-  useEffect(() => { base44.entities.Agent.list().then(setAgents); }, []);
+  useEffect(() => {
+    getAgentsFromSupabaseLive().then(setAgents).catch(() => setAgents([]));
+  }, []);
   const agent = agents?.find((a) => a.id === agentId);
-  const refresh = () => base44.entities.Agent.list().then(setAgents);
+  const refresh = () => getAgentsFromSupabaseLive().then(setAgents).catch(() => setAgents([]));
 
   return (
     <div>

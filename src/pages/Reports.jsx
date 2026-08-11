@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useState } from "react";
-import { base44 } from "@/api/base44Client";
 import PageHeader from "@/components/PageHeader";
 import { getOrdersFromSupabase, getReportsFromSupabase, updateOrderInSupabase, updateReportInSupabase } from "@/lib/supabaseData";
 import StatusBadge from "@/components/StatusBadge";
@@ -65,7 +64,7 @@ export default function Reports() {
     const r = reports.find((x) => x.id === uploadingId);
     if (!r) { setUploadingId(null); return; }
     try {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      const file_url = URL.createObjectURL(file);
       await updateReportInSupabase(r.id, { evidence_url: file_url });
       const o = orderFor(r);
       if (o) await updateOrderInSupabase(o.id, { evidence_url: file_url });

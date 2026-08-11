@@ -1,9 +1,9 @@
 import React, { useState } from "react";
-import { base44 } from "@/api/base44Client";
 import PageHeader from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { CheckCircle2, Ban } from "lucide-react";
+import { getOrdersFromSupabase, updateOrderInSupabase } from "@/lib/supabaseData";
 
 export default function BulkStatus() {
   const [text, setText] = useState("");
@@ -14,14 +14,14 @@ export default function BulkStatus() {
     const numbers = [...new Set(text.split(/[\s,;\n]+/).map((s) => s.trim()).filter(Boolean))];
     if (numbers.length === 0) return;
     setBusy(true);
-    const all = await base44.entities.Order.list("-created_date", 500);
+    const all = await getOrdersFromSupabase();
     const matched = all.filter((o) => numbers.includes(o.recipient_number));
     if (matched.length) {
       const updates = matched.map((o) => {
         if (status === "cancelled") return { id: o.id, status: "cancelled", reference: (o.reference ? o.reference + " | " : "") + "auto-refund" };
         return { id: o.id, status: "completed" };
       });
-      await base44.entities.Order.bulkUpdate(updates);
+      await Promise.all(updates.map((update) => updateOrderInSupabase(update.id, update)));
     }
     setResult({ requested: numbers.length, matched: matched.length, status });
     setBusy(false);

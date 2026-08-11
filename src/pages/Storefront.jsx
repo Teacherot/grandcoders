@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { base44 } from "@/api/base44Client";
 import OrderTab from "@/components/storefront/OrderTab";
 import CheckOrderTab from "@/components/storefront/CheckOrderTab";
 import ReportTab from "@/components/storefront/ReportTab";
@@ -8,6 +7,7 @@ import StoreShareBar from "@/components/storefront/StoreShareBar";
 import StoreContact from "@/components/storefront/StoreContact";
 import PayResult from "@/components/storefront/PayResult";
 import { ShieldCheck, Zap, MapPin, Info, CheckCircle2, AlertTriangle, Megaphone } from "lucide-react";
+import { getAgentsFromSupabaseLive, getNotificationsFromSupabase, getPackagesFromSupabase, getSettingsFromSupabase } from "@/lib/supabaseData";
 
 const slug = (s) => (s || "").toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
@@ -29,25 +29,41 @@ export default function Storefront() {
   useEffect(() => {
     let alive = true;
     const loadNotices = () =>
-      base44.entities.Notification
-        .filter({ active: true })
-        .then((n) => { if (alive) setNotices(n); })
+      getNotificationsFromSupabase()
+        .then((n) => { if (alive) setNotices((n || []).filter((item) => item.active !== false)); })
         .catch(() => {});
 
     (async () => {
-      const [storeRes, notifs, status] = await Promise.all([
-        base44.functions.invoke("getPublicStore", { slug: sl }).catch(() => null),
-        base44.entities.Notification.filter({ active: true }).catch(() => []),
-        base44.functions.invoke("getStoreStatus", {}).catch(() => null),
+      const [agentRows, packageRows, notifs, settingsRows] = await Promise.all([
+        getAgentsFromSupabaseLive().catch(() => []),
+        getPackagesFromSupabase().catch(() => []),
+        getNotificationsFromSupabase().catch(() => []),
+        getSettingsFromSupabase().catch(() => []),
       ]);
       if (!alive) return;
-      setPaused(!!status?.data?.stores_paused);
-      const s = storeRes?.data;
-      if (s && s.agent) {
-        setAgent(s.agent);
-        setPrices(s.prices || []);
+
+      const storesPaused = (settingsRows || []).find((row) => row.key === "stores_paused")?.value === "true";
+      setPaused(!!storesPaused);
+
+      const resolvedSlug = slug(sl);
+      const storeAgent = (agentRows || []).find((a) =>
+        slug(a.store_slug || a.store_name || a.full_name) === resolvedSlug
+      );
+
+      if (storeAgent) {
+        setAgent(storeAgent);
+        const mappedPrices = (packageRows || [])
+          .filter((p) => p.active !== false)
+          .map((p) => ({
+            id: p.id,
+            package_name: p.name || p.package_name || `${p.volume_gb || ""}GB`,
+            network: p.network,
+            volume_gb: p.volume_gb,
+            price: Number(p.agent_price ?? p.price ?? 0),
+          }));
+        setPrices(mappedPrices);
       }
-      setNotices(notifs);
+      setNotices((notifs || []).filter((item) => item.active !== false));
       setLoading(false);
     })();
 
@@ -62,22 +78,11 @@ export default function Storefront() {
     window.addEventListener("focus", onFocus);
     const timer = setInterval(loadNotices, 30000);
 
-    const unsub = base44.entities.Notification.subscribe((ev) => {
-      const ev2 = ev || {};
-      setNotices((prev) => {
-        if (ev2.type === "delete") return prev.filter((n) => n.id !== ev2.data?.id);
-        const d = ev2.data;
-        if (!d || d.active === false) return prev.filter((n) => n.id !== d.id);
-        return prev.some((n) => n.id === d.id) ? prev.map((n) => (n.id === d.id ? d : n)) : [d, ...prev];
-      });
-    });
-
     return () => {
       alive = false;
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("focus", onFocus);
       clearInterval(timer);
-      if (unsub) unsub();
     };
   }, [sl]);
 
