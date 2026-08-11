@@ -8,6 +8,7 @@ import StatusBadge from "@/components/StatusBadge";
 import AgentForm from "@/components/agents/AgentForm";
 import WalletTopUp from "@/components/agents/WalletTopUp";
 import { nextCode } from "@/lib/shortCode";
+import { createAgentInSupabase, deleteAgentInSupabase, getAgentWalletsFromSupabase, getAgentsFromSupabaseLive, updateAgentInSupabase } from "@/lib/supabaseData";
 
 export default function Agents() {
   const [agents, setAgents] = useState(null);
@@ -18,35 +19,15 @@ export default function Agents() {
   const [wallets, setWallets] = useState({});
 
   const load = async () => {
-    const [list, users] = await Promise.all([
-      base44.entities.Agent.list("-created_date"),
-      base44.entities.User.list().catch(() => []),
-    ]);
-    const emails = new Set((list || []).map((a) => (a.email || "").toLowerCase()).filter(Boolean));
-    const toCreate = (users || []).filter(
-      (u) => u.role === "agent" && u.email && !emails.has(u.email.toLowerCase())
-    );
-    if (toCreate.length) {
-      await Promise.all(
-        toCreate.map((u) =>
-          base44.entities.Agent.create({
-            full_name: u.full_name || (u.email || "agent").split("@")[0],
-            email: u.email,
-            phone: "",
-            store_name: `${u.full_name || (u.email || "agent").split("@")[0]}'s Store`,
-          })
-        )
-      );
-      setAgents(await base44.entities.Agent.list("-created_date"));
-    } else {
-      setAgents(list);
-    }
+    const list = await getAgentsFromSupabaseLive();
+    setAgents(list);
   };
-  const loadWallets = () => base44.entities.AgentWallet.list("-created_date", 500).then((w) => {
+  const loadWallets = async () => {
+    const w = await getAgentWalletsFromSupabase();
     const map = {};
     (w || []).forEach((x) => { map[x.agent_id] = x; });
     setWallets(map);
-  });
+  };
 
   useEffect(() => {
     load();
@@ -55,14 +36,25 @@ export default function Agents() {
   }, []);
 
   const save = async (data) => {
-    if (editing) await base44.entities.Agent.update(editing.id, data);
-    else await base44.entities.Agent.create({ ...data, code: await nextCode("Agent", "A") });
-    setOpen(false);
-    setEditing(null);
-    load();
+    try {
+      if (editing) {
+        await updateAgentInSupabase(editing.id, data);
+      } else {
+        const payload = { ...data, code: await nextCode("Agent", "A") };
+        console.log('Creating agent via Supabase', payload);
+        const result = await createAgentInSupabase(payload);
+        console.log('Agent create result', result);
+      }
+      setOpen(false);
+      setEditing(null);
+      await load();
+    } catch (error) {
+      console.error('Agent save failed', error);
+      alert(error?.message || 'Unable to save agent.');
+    }
   };
 
-  const remove = async (id) => { await base44.entities.Agent.delete(id); load(); };
+  const remove = async (id) => { await deleteAgentInSupabase(id); load(); };
 
   return (
     <div>
