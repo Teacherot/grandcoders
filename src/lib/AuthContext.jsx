@@ -21,10 +21,10 @@ export const AuthProvider = ({ children }) => {
     setIsAuthenticated(true);
     setAuthChecked(true);
     setUser({
-      id: 'demo-agent',
-      email: 'agent@example.com',
-      full_name: 'Demo Agent',
-      role: 'agent',
+      id: 'demo-admin',
+      email: 'admin@example.com',
+      full_name: 'Demo Admin',
+      role: 'admin',
       store_name: 'Demo Store',
       commission_rate: 10,
     });
@@ -36,10 +36,10 @@ export const AuthProvider = ({ children }) => {
     setIsAuthenticated(true);
     setAuthChecked(true);
     setUser({
-      id: 'demo-agent',
-      email: 'agent@example.com',
-      full_name: 'Demo Agent',
-      role: 'agent',
+      id: 'demo-admin',
+      email: 'admin@example.com',
+      full_name: 'Demo Admin',
+      role: 'admin',
       store_name: 'Demo Store',
       commission_rate: 10,
     });

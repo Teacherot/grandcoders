@@ -22,8 +22,9 @@ export default function Login() {
     setError("");
     setLoading(true);
     try {
-      localStorage.setItem('agent_id', 'demo-agent');
-      navigate(returnTo);
+      localStorage.setItem('agent_id', 'demo-admin');
+      localStorage.setItem('demo_login', 'true');
+      navigate(returnTo || '/');
     } catch (err) {
       setError(err.message || "Invalid email or password");
     } finally {
@@ -31,9 +32,10 @@ export default function Login() {
     }
   };
 
-  const handleGoogle = () => {
-    localStorage.setItem('agent_id', 'demo-agent');
-    navigate(returnTo);
+  const handleDemoLogin = () => {
+    localStorage.setItem('agent_id', 'demo-admin');
+    localStorage.setItem('demo_login', 'true');
+    navigate(returnTo || '/');
   };
 
   return (
@@ -56,7 +58,7 @@ export default function Login() {
       <Button
         variant="outline"
         className="w-full h-12 text-sm font-medium mb-6"
-        onClick={handleGoogle}
+        onClick={handleDemoLogin}
       >
         <Mail className="w-5 h-5 mr-2" />
         Continue as demo agent
