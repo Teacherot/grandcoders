@@ -160,7 +160,11 @@ create policy "Allow all access to orders" on orders for all using (true) with c
 create policy "Allow all access to reports" on reports for all using (true) with check (true);
 create policy "Allow all access to packages" on packages for all using (true) with check (true);
 create policy "Allow all access to wallet_transactions" on wallet_transactions for all using (true) with check (true);
-create policy "Allow all access to agent_wallets" on agent_wallets for all using (true) with check (true);
+drop policy if exists "Allow all access to agent_wallets" on agent_wallets;
+create policy "Allow read access to agent_wallets" on agent_wallets for select using (true);
+create policy "Allow write access to agent_wallets" on agent_wallets for insert with check (true);
+create policy "Allow update access to agent_wallets" on agent_wallets for update using (true) with check (true);
+create policy "Allow delete access to agent_wallets" on agent_wallets for delete using (true);
 create policy "Allow all access to withdrawals" on withdrawals for all using (true) with check (true);
 create policy "Allow all access to notifications" on notifications for all using (true) with check (true);
 create policy "Allow all access to chat_messages" on chat_messages for all using (true) with check (true);
