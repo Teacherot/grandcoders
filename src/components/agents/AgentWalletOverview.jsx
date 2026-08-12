@@ -53,39 +53,21 @@ export default function AgentWalletOverview() {
   const approxBundles = balance ? Math.floor(balance / 4.4) : 0;
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1.5fr_1fr]">
-      <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <span>Wallet</span>
-        </div>
-        <div className="mt-3 font-display text-5xl font-bold tracking-tight text-foreground">{loading ? "—" : cedi(balance)}</div>
-        <div className="mt-2 text-xs text-muted-foreground">Net flow: {loading ? "—" : cedi(walletFlow)} · Approx. {loading ? "—" : approxBundles} × MTN 1GB bundles</div>
-        <div className="mt-6 grid grid-cols-2 gap-3">
-          <div className="rounded-xl bg-background/50 p-3">
-            <div className="text-[11px] text-muted-foreground uppercase tracking-wider">Today spend</div>
-            <div className="mt-1 font-display font-semibold tabular-nums">{loading ? "—" : cedi(todaySpend)}</div>
-          </div>
-          <div className="rounded-xl bg-background/50 p-3">
-            <div className="text-[11px] text-muted-foreground uppercase tracking-wider">7-day spend</div>
-            <div className="mt-1 font-display font-semibold tabular-nums">{loading ? "—" : cedi(sevenDaySpend)}</div>
-          </div>
-        </div>
+    <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <span>Wallet</span>
       </div>
-      <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
-        <h2 className="font-display text-lg font-semibold">Manual deposit claim</h2>
-        <div className="mt-3 rounded-xl border border-dashed border-border bg-background/60 p-4 text-sm">
-          <div className="text-muted-foreground">Send Mobile Money to</div>
-          <div className="mt-2 text-lg font-semibold tracking-tight">{data?.admin_momo_number || "Loading..."}</div>
-          <div className="text-xs text-muted-foreground">{data?.admin_momo_name || "GrandCoders"}</div>
+      <div className="mt-3 font-display text-5xl font-bold tracking-tight text-foreground">{loading ? "—" : cedi(balance)}</div>
+      <div className="mt-2 text-xs text-muted-foreground">Net flow: {loading ? "—" : cedi(walletFlow)} · Approx. {loading ? "—" : approxBundles} × MTN 1GB bundles</div>
+      <div className="mt-6 grid grid-cols-2 gap-3">
+        <div className="rounded-xl bg-background/50 p-3">
+          <div className="text-[11px] text-muted-foreground uppercase tracking-wider">Today spend</div>
+          <div className="mt-1 font-display font-semibold tabular-nums">{loading ? "—" : cedi(todaySpend)}</div>
         </div>
-        <div className="mt-4 grid grid-cols-3 gap-2">
-          {['₵100', '₵250', '₵500', '₵1000', '₵2500'].map((amount) => (
-            <button key={amount} type="button" className="rounded-xl border border-border px-3 py-2 text-sm text-foreground transition hover:border-primary/40">
-              {amount}
-            </button>
-          ))}
+        <div className="rounded-xl bg-background/50 p-3">
+          <div className="text-[11px] text-muted-foreground uppercase tracking-wider">7-day spend</div>
+          <div className="mt-1 font-display font-semibold tabular-nums">{loading ? "—" : cedi(sevenDaySpend)}</div>
         </div>
-        <p className="mt-4 text-sm text-muted-foreground">You can submit a claim below if automatic credit does not arrive.</p>
       </div>
     </div>
   );
