@@ -1,134 +1,94 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import AuthLayout from "@/components/AuthLayout";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { KeyRound, Loader2 } from "lucide-react";
+import { Loader2, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 
-// Shown on first login to a brand-new account that wasn't pre-authorized
-// (e.g. a direct Google sign-up that skipped the register token gate). The user
-// must enter a valid sign-up token to provision their agent account.
+// Token requirement removed:
+// If user is signed in, provision agent account (if missing) and continue.
 export default function SignupTokenRequired() {
-  const [token, setToken] = useState(() => {
-    try {
-      return sessionStorage.getItem("pending_signup_token") || "";
-    } catch {
-      return "";
-    }
-  });
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
-    try {
-      if (!supabase) throw new Error("Supabase is not configured");
-      const { data: authData, error: authError } = await supabase.auth.getUser();
-      if (authError) throw authError;
-      const user = authData?.user;
-      if (!user?.email) throw new Error("You must be signed in first.");
-
-      const { data: existing, error: existingError } = await supabase.from("agents").select("id").eq("email", user.email).limit(1);
-      if (existingError) throw existingError;
-
-      const enteredToken = token.trim();
-      if (!enteredToken) throw new Error("Token is required.");
-
-      const { data: settingRows, error: settingError } = await supabase
-        .from("settings")
-        .select("value")
-        .eq("key", "signup_token")
-        .limit(1);
-
-      const configuredToken = settingRows?.[0]?.value || import.meta.env.VITE_SIGNUP_TOKEN || "";
-
-      if (settingError && !import.meta.env.VITE_SIGNUP_TOKEN) {
-        throw new Error("Signup token verification is unavailable. Add a read policy for the signup_token setting or set VITE_SIGNUP_TOKEN.");
-      }
-
-      if (!configuredToken) {
-        throw new Error("Signup token is not configured by admin.");
-      }
-
-      if (enteredToken !== configuredToken) {
-        throw new Error("Invalid token code");
-      }
+  useEffect(() => {
+    const run = async () => {
+      setError("");
+      setLoading(true);
 
       try {
-        sessionStorage.setItem("pending_signup_token", enteredToken);
-      } catch {
-        // Ignore storage write failures.
-      }
+        if (!supabase) throw new Error("Supabase is not configured");
 
-      if (!(existing || [])[0]) {
-        const payload = {
-          id: user.id,
-          email: user.email,
-          full_name: user.user_metadata?.full_name || user.email.split("@")[0],
-          role: "agent",
-          status: "active",
-          code: `A${Date.now().toString().slice(-6)}`,
-          created_at: new Date().toISOString(),
-          created_date: new Date().toISOString(),
-        };
-        const { error: insertError } = await supabase.from("agents").insert(payload);
-        if (insertError) throw insertError;
+        const { data: authData, error: authError } = await supabase.auth.getUser();
+        if (authError) throw authError;
+
+        const user = authData?.user;
+        if (!user?.email) throw new Error("You must be signed in first.");
+
+        const { data: existing, error: existingError } = await supabase
+          .from("agents")
+          .select("id")
+          .eq("email", user.email)
+          .limit(1);
+
+        if (existingError) throw existingError;
+
+        if (!(existing || [])[0]) {
+          const payload = {
+            id: user.id,
+            email: user.email,
+            full_name: user.user_metadata?.full_name || user.email.split("@")[0],
+            role: "agent",
+            status: "active",
+            code: `A${Date.now().toString().slice(-6)}`,
+            created_at: new Date().toISOString(),
+            created_date: new Date().toISOString(),
+          };
+
+          const { error: insertError } = await supabase.from("agents").insert(payload);
+          if (insertError) throw insertError;
+        }
+
+        // Clean up any leftover token cache from older builds
+        try {
+          sessionStorage.removeItem("pending_signup_token");
+        } catch {
+          // ignore
+        }
+
+        // Continue app flow
+        window.location.reload();
+      } catch (err) {
+        setError(err.message || "Unable to finish account setup.");
+        setLoading(false);
       }
-      try {
-        sessionStorage.removeItem("pending_signup_token");
-      } catch {
-        // Ignore storage cleanup failures.
-      }
-      window.location.reload();
-    } catch (err) {
-      setError(err.message || "Invalid token code");
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+
+    run();
+  }, []);
 
   return (
     <AuthLayout
-      icon={KeyRound}
-      title="Enter your sign-up code"
-      subtitle="You need a valid token code to finish creating your account."
+      icon={error ? Loader2 : CheckCircle2}
+      title={error ? "Setup failed" : "Finishing account setup"}
+      subtitle={
+        error
+          ? "We couldn't finish creating your account."
+          : "Please wait a moment while we prepare your account."
+      }
     >
-      {error && (
-        <div className="mb-4 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
-          {error}
-        </div>
-      )}
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="post-signup-token">Token code</Label>
-          <div className="relative">
-            <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
-            <Input
-              id="post-signup-token"
-              type="text"
-              autoFocus
-              placeholder="Enter your token code"
-              value={token}
-              onChange={(e) => setToken(e.target.value)}
-              className="pl-10 h-12"
-              required
-            />
+      <div className="space-y-3">
+        {loading && !error && (
+          <div className="flex items-center text-sm text-muted-foreground">
+            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            Creating your account...
           </div>
-        </div>
-        <Button type="submit" className="w-full h-12 font-medium" disabled={loading || !token.trim()}>
-          {loading ? (
-            <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Verifying...
-            </>
-          ) : (
-            "Continue"
-          )}
-        </Button>
-      </form>
+        )}
+
+        {error && (
+          <div className="p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
+            {error}
+          </div>
+        )}
+      </div>
     </AuthLayout>
   );
 }
