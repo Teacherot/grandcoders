@@ -12,6 +12,7 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import RoleShell, { RoleRoute } from '@/components/RoleShell';
 import Login from '@/pages/Login';
 import Register from '@/pages/Register';
+import AuthTester from '@/pages/AuthTester';
 import ForgotPassword from '@/pages/ForgotPassword';
 import ResetPassword from '@/pages/ResetPassword';
 import Analytics from '@/pages/Analytics';
@@ -71,6 +72,7 @@ const AuthenticatedApp = () => {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/auth-test" element={<AuthTester />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/store/:slug" element={<Storefront />} />
