@@ -5,6 +5,20 @@ function safeRows(result) {
   return result.data || [];
 }
 
+function isCreditTransaction(row = {}) {
+  const type = String(row.type || row.kind || "").toLowerCase();
+  return type === "top_up" || type === "adjustment" || type === "deposit" || type === "credit";
+}
+
+function signedAmount(row = {}) {
+  const amount = Number(row.amount || 0);
+  if (Number.isNaN(amount)) return 0;
+  if (typeof row.balance_after !== "undefined" && row.balance_after !== null) {
+    return amount;
+  }
+  return isCreditTransaction(row) ? amount : -Math.abs(amount);
+}
+
 export async function getAgentSelfServiceData(agentId = null) {
   if (!supabase) {
     return {
@@ -50,8 +64,13 @@ export async function getAgentSelfServiceData(agentId = null) {
   const tx = safeRows(walletRes);
   const momo = safeRows(momoRes);
   const walletProfile = safeRows(walletProfileRes)[0] || null;
-
-  const balance = tx.reduce((sum, row) => sum + Number(row.amount || 0), 0);
+  const lastBalanceAfter = [...tx].find((row) => row.balance_after !== undefined && row.balance_after !== null)?.balance_after;
+  const walletProfileBalance = walletProfile?.balance;
+  const balance = Number.isFinite(Number(walletProfileBalance))
+    ? Number(walletProfileBalance)
+    : Number.isFinite(Number(lastBalanceAfter))
+      ? Number(lastBalanceAfter)
+      : tx.reduce((sum, row) => sum + signedAmount(row), 0);
 
   return {
     ok: true,

@@ -7,6 +7,20 @@ function isSameDay(a, b) {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }
 
+function isCreditTransaction(tx = {}) {
+  const type = String(tx.type || tx.kind || "").toLowerCase();
+  return type === "top_up" || type === "adjustment" || type === "deposit" || type === "credit";
+}
+
+function signedAmount(tx = {}) {
+  const amount = Number(tx.amount || 0);
+  if (Number.isNaN(amount)) return 0;
+  if (typeof tx.balance_after !== "undefined" && tx.balance_after !== null) {
+    return amount;
+  }
+  return isCreditTransaction(tx) ? amount : -Math.abs(amount);
+}
+
 export default function AgentWalletOverview() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -20,11 +34,13 @@ export default function AgentWalletOverview() {
   const wallet = data?.transactions || [];
   const balance = data?.balance || 0;
   const now = new Date();
-  const spent = wallet.filter((t) => Number(t.amount) < 0).map((t) => ({
+  const spent = wallet.filter((t) => !isCreditTransaction(t)).map((t) => ({
     ...t,
     amount: Math.abs(Number(t.amount || 0)),
     date: new Date(t.created_date || ""),
   }));
+
+  const walletFlow = wallet.reduce((sum, tx) => sum + signedAmount(tx), 0);
 
   const todaySpend = spent
     .filter((t) => isSameDay(t.date, now))
@@ -43,7 +59,7 @@ export default function AgentWalletOverview() {
           <span>Wallet</span>
         </div>
         <div className="mt-3 font-display text-5xl font-bold tracking-tight text-foreground">{loading ? "—" : cedi(balance)}</div>
-        <div className="mt-2 text-xs text-muted-foreground">Approx. {loading ? "—" : approxBundles} × MTN 1GB bundles</div>
+        <div className="mt-2 text-xs text-muted-foreground">Net flow: {loading ? "—" : cedi(walletFlow)} · Approx. {loading ? "—" : approxBundles} × MTN 1GB bundles</div>
         <div className="mt-6 grid grid-cols-2 gap-3">
           <div className="rounded-xl bg-background/50 p-3">
             <div className="text-[11px] text-muted-foreground uppercase tracking-wider">Today spend</div>
