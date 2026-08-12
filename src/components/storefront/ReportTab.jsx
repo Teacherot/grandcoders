@@ -15,13 +15,20 @@ export default function ReportTab({ agent }) {
   const [reason, setReason] = useState("");
   const [details, setDetails] = useState("");
   const [done, setDone] = useState(null);
+  const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
   const find = async (e) => {
     e.preventDefault();
     if (!code.trim()) return;
+    setError("");
     const rows = await getOrdersFromSupabase().catch(() => []);
-    const found = (rows || []).find((row) => String(row.code || "").trim().toLowerCase() === code.trim().toLowerCase());
+    const query = code.trim().toLowerCase();
+    const found = (rows || []).find((row) => {
+      const rowCode = String(row.code || "").trim().toLowerCase();
+      const rowId = String(row.id || "").trim().toLowerCase();
+      return rowCode === query || rowId === query;
+    });
     setOrder(found || null);
     setSearched(true);
   };
@@ -29,22 +36,21 @@ export default function ReportTab({ agent }) {
   const submit = async (e) => {
     e.preventDefault();
     if (!order || !reason) return;
+    setError("");
     setBusy(true);
     try {
       const created = await createReportInSupabase({
-        agent_id: agent?.id || "",
-        agent_name: agent?.full_name || agent?.store_name || "",
-        agent_email: agent?.email || "",
-        order_id: order.id || "",
-        customer_name: order.customer_name || "",
-        recipient_number: order.recipient_number || "",
-        package_name: order.package_name || "",
-        network: order.network || "",
+        agent_id: agent?.id || order.agent_id || null,
+        order_id: order.id || null,
+        recipient_number: order.recipient_number || null,
+        package_name: order.package_name || null,
         reason,
         details,
         status: "open",
       });
       setDone(created || null);
+    } catch (err) {
+      setError(err?.message || "Could not submit report right now.");
     } finally {
       setBusy(false);
     }
@@ -66,12 +72,16 @@ export default function ReportTab({ agent }) {
   return (
     <div className="space-y-5">
       <form onSubmit={find} className="flex gap-2">
-        <Input value={code} onChange={(e) => setCode(e.target.value)} placeholder="Enter your order ID (e.g. 104823)" inputMode="numeric" />
+        <Input value={code} onChange={(e) => setCode(e.target.value)} placeholder="Enter your Order ID or code (e.g. O8X2K4AB)" />
         <Button type="submit" variant="outline"><Search className="w-4 h-4" /> Find</Button>
       </form>
 
       {searched && !order && (
         <p className="text-sm text-muted-foreground">No order found with that ID. Double-check the ID from your order confirmation.</p>
+      )}
+
+      {error && (
+        <p className="text-sm text-rose-600">{error}</p>
       )}
 
       {order && (

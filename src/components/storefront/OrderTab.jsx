@@ -20,6 +20,9 @@ export default function OrderTab({ agent, prices }) {
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
   const [payMsg, setPayMsg] = useState("");
+  const [payStatus, setPayStatus] = useState("idle");
+  const [lastOrderCode, setLastOrderCode] = useState("");
+  const [copiedOrderCode, setCopiedOrderCode] = useState(false);
   const [query, setQuery] = useState("");
 
   const nets = useMemo(() => Array.from(new Set(prices.map((p) => p.network))), [prices]);
@@ -43,10 +46,13 @@ export default function OrderTab({ agent, prices }) {
     const p = chosen;
     if (!p || !recipient || !email) return;
     if (!validGhNumber(recipient)) {
+      setPayStatus("error");
       setPayMsg("Enter a valid Ghana mobile number (e.g. 0244XXXXXX).");
       return;
     }
     setBusy(true);
+    setPayStatus("info");
+    setLastOrderCode("");
     setPayMsg("Placing order…");
     const orderMeta = {
       store_slug: agent.store_slug,
@@ -70,11 +76,27 @@ export default function OrderTab({ agent, prices }) {
         payment_method: "momo",
         reference: `STORE-${Date.now()}`,
       });
-      setPayMsg(`Order placed successfully. Your Order ID is ${created?.code || "generated"}. Use Check order to track status.`);
+      const code = created?.code || "";
+      setLastOrderCode(code);
+      setPayStatus("success");
+      setPayMsg("Order placed successfully. Save your Order ID to track status anytime.");
     } catch (err) {
+      setPayStatus("error");
+      setLastOrderCode("");
       setPayMsg(err?.message || "Payment failed to start.");
     } finally {
       setBusy(false);
+    }
+  };
+
+  const copyOrderCode = async () => {
+    if (!lastOrderCode) return;
+    try {
+      await navigator.clipboard?.writeText(lastOrderCode);
+      setCopiedOrderCode(true);
+      setTimeout(() => setCopiedOrderCode(false), 1500);
+    } catch {
+      setCopiedOrderCode(false);
     }
   };
 
@@ -124,7 +146,11 @@ export default function OrderTab({ agent, prices }) {
                 email={email}
                 setEmail={setEmail}
                 busy={busy}
+                payStatus={payStatus}
                 payMsg={payMsg}
+                lastOrderCode={lastOrderCode}
+                copiedOrderCode={copiedOrderCode}
+                onCopyOrderCode={copyOrderCode}
                 onSubmit={order}
                 onClose={() => setSel("")}
               />
