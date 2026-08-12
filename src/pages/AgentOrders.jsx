@@ -226,11 +226,14 @@ export default function AgentOrders() {
                       {expanded === o.id ? "Hide details" : "View details"}
                     </button>
                     {canReport ? (
-                      <button className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-amber-600" onClick={() => openReport(o)}>
-                        <Flag className="w-3.5 h-3.5" />{ar.length ? `Reported (${ar.length})` : "Report"}
-                      </button>
+                      <div className="flex flex-col items-end gap-1">
+                        <button className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-amber-600" onClick={() => openReport(o)}>
+                          <Flag className="w-3.5 h-3.5" />{ar.length ? `Reported (${ar.length})` : "Report"}
+                        </button>
+                        <span className="text-[11px] text-muted-foreground/60">Reports are available for 2 days after completion.</span>
+                      </div>
                     ) : o.status === "completed" ? (
-                      <span className="text-xs text-muted-foreground/60">{resolved ? "Resolved" : "Window closed"}</span>
+                      <span className="text-xs text-muted-foreground/60">{resolved ? "Resolved" : "Reporting window closed"}</span>
                     ) : (
                       <span className="text-xs text-muted-foreground/60">—</span>
                     )}
@@ -288,11 +291,16 @@ export default function AgentOrders() {
                       <td className="px-5 py-4"><StatusBadge status={o.status} /></td>
                       <td className="px-5 py-4 text-right">
                         {canReport ? (
-                          <button className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-amber-600" onClick={(e) => { e.stopPropagation(); openReport(o); }}>
-                            <Flag className="w-3.5 h-3.5" />{ar.length ? `Reported (${ar.length})` : "Report"}
-                          </button>
+                          <div className="flex flex-col items-end gap-1">
+                            <button className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-amber-600" onClick={(e) => { e.stopPropagation(); openReport(o); }}>
+                              <Flag className="w-3.5 h-3.5" />{ar.length ? `Reported (${ar.length})` : inWindow ? "Report" : "Report completed order"}
+                            </button>
+                            {!inWindow && (
+                              <span className="text-[11px] text-muted-foreground/60">Reporting window closed, but you can still submit a report.</span>
+                            )}
+                          </div>
                         ) : o.status === "completed" ? (
-                          <span className="text-xs text-muted-foreground/60">{resolved ? "Resolved" : "Window closed"}</span>
+                          <span className="text-xs text-muted-foreground/60">{resolved ? "Resolved" : "Reporting locked"}</span>
                         ) : (
                           <span className="text-xs text-muted-foreground/60">—</span>
                         )}
@@ -343,9 +351,12 @@ export default function AgentOrders() {
                           {o.evidence_url && <ReportEvidence url={o.evidence_url} label="Delivery evidence" />}
                           <div className="mt-4 flex items-center gap-3">
                             {canReport ? (
-                              <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); openReport(o); }}>
-                                <Flag className="w-4 h-4" /> {ar.length ? `Report issue (${ar.length})` : "Report issue"}
-                              </Button>
+                              <div className="flex flex-col items-start gap-1">
+                                <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); openReport(o); }}>
+                                  <Flag className="w-4 h-4" /> {ar.length ? `Report issue (${ar.length})` : "Report issue"}
+                                </Button>
+                                <span className="text-[11px] text-muted-foreground/60">Reports are available for 2 days after completion.</span>
+                              </div>
                             ) : o.status === "completed" ? (
                               <span className="text-xs text-muted-foreground/60">{resolved ? "Issue resolved" : "Reporting window closed"}</span>
                             ) : (
