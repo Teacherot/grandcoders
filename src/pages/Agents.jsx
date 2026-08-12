@@ -1,13 +1,16 @@
 import React, { useEffect, useState } from "react";
-import { Plus, Trash2, Pencil, Phone, Mail, Wallet } from "lucide-react";
+import { Plus, Trash2, Pencil, Phone, Mail, Wallet, KeyRound, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import PageHeader from "@/components/PageHeader";
 import StatusBadge from "@/components/StatusBadge";
 import AgentForm from "@/components/agents/AgentForm";
 import WalletTopUp from "@/components/agents/WalletTopUp";
 import { nextCode } from "@/lib/shortCode";
 import { createAgentInSupabase, deleteAgentInSupabase, getAgentWalletsFromSupabase, getAgentsFromSupabaseLive, getOrdersFromSupabase, updateAgentInSupabase } from "@/lib/supabaseData";
+import { resetAgentPassword } from "@/lib/adminAuth";
 
 export default function Agents() {
   const [agents, setAgents] = useState(null);
@@ -15,6 +18,10 @@ export default function Agents() {
   const [editing, setEditing] = useState(null);
   const [open, setOpen] = useState(false);
   const [topUp, setTopUp] = useState(null);
+  const [passwordAgent, setPasswordAgent] = useState(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [resettingPassword, setResettingPassword] = useState(false);
+  const [passwordMsg, setPasswordMsg] = useState("");
   const [wallets, setWallets] = useState({});
 
   const load = async () => {
@@ -56,6 +63,28 @@ export default function Agents() {
 
   const remove = async (id) => { await deleteAgentInSupabase(id); load(); };
 
+  const openPasswordReset = (agent) => {
+    setPasswordAgent(agent);
+    setNewPassword("");
+    setPasswordMsg("");
+  };
+
+  const submitPasswordReset = async (e) => {
+    e.preventDefault();
+    if (!passwordAgent?.id || !newPassword.trim()) return;
+    setResettingPassword(true);
+    setPasswordMsg("");
+    try {
+      await resetAgentPassword({ agentId: passwordAgent.id, newPassword: newPassword.trim() });
+      setPasswordMsg("Password reset sent successfully.");
+      setNewPassword("");
+    } catch (error) {
+      setPasswordMsg(error?.message || "Failed to reset password.");
+    } finally {
+      setResettingPassword(false);
+    }
+  };
+
   return (
     <div>
       <PageHeader
@@ -95,6 +124,7 @@ export default function Agents() {
                   <div className="flex gap-3">
                     <button className="text-muted-foreground hover:text-foreground" title="Top up wallet" onClick={() => setTopUp(a)}><Wallet className="w-4 h-4" /></button>
                     <button className="text-muted-foreground hover:text-foreground" onClick={() => { setEditing(a); setOpen(true); }}><Pencil className="w-4 h-4" /></button>
+                    <button className="text-muted-foreground hover:text-foreground" title="Reset password" onClick={() => openPasswordReset(a)}><KeyRound className="w-4 h-4" /></button>
                     <button className="text-muted-foreground/60 hover:text-destructive" onClick={() => remove(a.id)}><Trash2 className="w-4 h-4" /></button>
                   </div>
                 </div>
@@ -115,6 +145,31 @@ export default function Agents() {
         <DialogContent className="max-w-md">
           <DialogHeader><DialogTitle>Top up wallet — {topUp?.full_name}</DialogTitle></DialogHeader>
           {topUp && <WalletTopUp agent={topUp} onClose={() => { setTopUp(null); loadWallets(); }} />}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!passwordAgent} onOpenChange={(v) => { if (!v) setPasswordAgent(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Reset password — {passwordAgent?.full_name}</DialogTitle></DialogHeader>
+          <form onSubmit={submitPasswordReset} className="space-y-4">
+            <div>
+              <Label>New password</Label>
+              <Input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Enter a new password"
+                autoComplete="new-password"
+              />
+            </div>
+            {passwordMsg && <p className="text-sm text-muted-foreground">{passwordMsg}</p>}
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="ghost" onClick={() => setPasswordAgent(null)} disabled={resettingPassword}>Cancel</Button>
+              <Button type="submit" disabled={resettingPassword || !newPassword.trim()}>
+                {resettingPassword ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Resetting…</> : "Reset password"}
+              </Button>
+            </div>
+          </form>
         </DialogContent>
       </Dialog>
     </div>
