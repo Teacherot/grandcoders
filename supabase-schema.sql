@@ -7,6 +7,12 @@ create table if not exists agents (
   code text,
   role text default 'agent',
   store_name text,
+  store_slug text,
+  store_bio text,
+  store_notice text,
+  store_theme text,
+  store_active boolean default true,
+  logo_url text,
   commission_rate numeric default 10,
   active boolean default true,
   phone text,
@@ -22,8 +28,10 @@ create table if not exists orders (
   agent_id text references agents(id) on delete cascade,
   agent_name text,
   agent_email text,
+  store_slug text,
   recipient_number text,
   customer_name text,
+  customer_email text,
   package_name text,
   amount numeric default 0,
   status text default 'pending',
@@ -32,6 +40,7 @@ create table if not exists orders (
   volume_gb numeric default 0,
   payment_method text,
   reference text,
+  payment_reference text,
   code text,
   evidence_url text,
   archived boolean default false,
@@ -64,6 +73,34 @@ create table if not exists packages (
   agent_price numeric default 0,
   validity text,
   active boolean default true,
+  created_date timestamptz default now(),
+  created_at timestamptz default now()
+);
+
+create table if not exists agent_prices (
+  id text primary key,
+  agent_id text references agents(id) on delete cascade,
+  agent_name text,
+  package_id text,
+  package_name text,
+  network text,
+  volume_gb numeric default 0,
+  price numeric default 0,
+  active boolean default true,
+  created_date timestamptz default now(),
+  created_at timestamptz default now()
+);
+
+create table if not exists momo_transactions (
+  id text primary key,
+  agent_id text references agents(id) on delete cascade,
+  agent_name text,
+  transaction_id text,
+  amount numeric default 0,
+  status text default 'pending',
+  reference text,
+  phone text,
+  notes text,
   created_date timestamptz default now(),
   created_at timestamptz default now()
 );
@@ -137,6 +174,8 @@ alter table agents enable row level security;
 alter table orders enable row level security;
 alter table reports enable row level security;
 alter table packages enable row level security;
+alter table agent_prices enable row level security;
+alter table momo_transactions enable row level security;
 alter table wallet_transactions enable row level security;
 alter table agent_wallets enable row level security;
 alter table withdrawals enable row level security;
@@ -148,6 +187,8 @@ drop policy if exists "Allow all access to agents" on agents;
 drop policy if exists "Allow all access to orders" on orders;
 drop policy if exists "Allow all access to reports" on reports;
 drop policy if exists "Allow all access to packages" on packages;
+drop policy if exists "Allow all access to agent_prices" on agent_prices;
+drop policy if exists "Allow all access to momo_transactions" on momo_transactions;
 drop policy if exists "Allow all access to wallet_transactions" on wallet_transactions;
 drop policy if exists "Allow all access to agent_wallets" on agent_wallets;
 drop policy if exists "Allow all access to withdrawals" on withdrawals;
@@ -159,6 +200,8 @@ create policy "Allow all access to agents" on agents for all using (true) with c
 create policy "Allow all access to orders" on orders for all using (true) with check (true);
 create policy "Allow all access to reports" on reports for all using (true) with check (true);
 create policy "Allow all access to packages" on packages for all using (true) with check (true);
+create policy "Allow all access to agent_prices" on agent_prices for all using (true) with check (true);
+create policy "Allow all access to momo_transactions" on momo_transactions for all using (true) with check (true);
 create policy "Allow all access to wallet_transactions" on wallet_transactions for all using (true) with check (true);
 drop policy if exists "Allow all access to agent_wallets" on agent_wallets;
 create policy "Allow read access to agent_wallets" on agent_wallets for select using (true);
