@@ -18,13 +18,14 @@ import { pushOrderToGmpl, getAgentBalance } from "@/lib/gmpl";
 import { toast } from "@/components/ui/use-toast";
 import { getBackendHealth } from "@/lib/backend-api";
 import { testSupabaseConnection, getAgentsFromSupabase } from "@/lib/supabaseClient";
-import { createOrderInSupabase, getOrdersFromSupabase, getPackagesFromSupabase } from "@/lib/supabaseData";
+import { createOrderInSupabase, getOrdersFromSupabase, getPackagesFromSupabase, getWalletTransactionsFromSupabase } from "@/lib/supabaseData";
 
 const cedi = (n) => `GH₵ ${Number(n || 0).toFixed(2)}`;
 
 export default function AgentDashboard() {
   const { agent } = useRole();
   const [orders, setOrders] = useState(null);
+  const [walletTransactions, setWalletTransactions] = useState([]);
   const [wallet, setWallet] = useState(null);
   const [topUpOpen, setTopUpOpen] = useState(false);
   const [open, setOpen] = useState(false);
@@ -43,6 +44,18 @@ export default function AgentDashboard() {
       const rows = await getOrdersFromSupabase();
       if (!cancelled) setOrders((rows || []).filter((row) => row.agent_id === agent.id));
     };
+    const loadWalletTransactions = async () => {
+      const rows = await getWalletTransactionsFromSupabase();
+      if (!cancelled) setWalletTransactions((rows || []).filter((row) => row.agent_id === agent.id));
+    };
+    const loadBalance = async () => {
+      try {
+        const balance = await getAgentBalance();
+        if (!cancelled) setWallet({ balance });
+      } catch {
+        if (!cancelled) setWallet({ balance: 0 });
+      }
+    };
     const loadAgents = async () => {
       try {
         const data = await getAgentsFromSupabase();
@@ -60,6 +73,8 @@ export default function AgentDashboard() {
       }
     };
     loadOrders();
+    loadWalletTransactions();
+    loadBalance();
     loadAgents();
     setWallet(null);
     getPackagesFromSupabase().then((rows) => {
@@ -101,6 +116,10 @@ export default function AgentDashboard() {
   const list = orders || [];
   const completed = list.filter((o) => o.status === "completed");
   const pending = list.filter((o) => ["pending", "processing"].includes(o.status));
+  const totalSales = completed.reduce((sum, order) => sum + Number(order.amount || 0), 0);
+  const totalDeposits = walletTransactions
+    .filter((tx) => ["top_up", "adjustment", "deposit"].includes(String(tx.type || "").toLowerCase()))
+    .reduce((sum, tx) => sum + Math.max(Number(tx.amount || 0), 0), 0);
   const commission = completed.filter((o) => o.source === "store").reduce((s, o) => s + (o.amount || 0), 0) * (agent.commission_rate || 0) / 100;
   const recent = list.slice(0, 6);
 
@@ -163,10 +182,12 @@ export default function AgentDashboard() {
       </div>
 
       <NotificationsPopup />
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-5 mb-8">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-6 xl:grid-cols-7 mb-8">
         <StatCard label="Total orders" value={list.length} />
         <StatCard label="Completed" value={completed.length} />
         <StatCard label="Pending" value={pending.length} />
+        <StatCard label="Total sales" value={cedi(totalSales)} />
+        <StatCard label="Total deposits" value={cedi(totalDeposits)} />
         <StatCard label="Commission earned" value={cedi(commission)} />
         <button onClick={() => setTopUpOpen(true)} className="text-left">
           <StatCard label="Wallet balance" value={cedi(wallet?.balance)} hint="Tap to top up" />
