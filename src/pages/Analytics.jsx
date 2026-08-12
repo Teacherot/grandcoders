@@ -7,6 +7,7 @@ import StatCard from "@/components/StatCard";
 import StatusBadge from "@/components/StatusBadge";
 import RevenueGrowthReport from "@/components/analytics/RevenueGrowthReport";
 import AgentLeaderboard from "@/components/analytics/AgentLeaderboard";
+import BackendDiagnosticsPanel from "@/components/BackendDiagnosticsPanel";
 import { buildBaseCostLookup, buildNetMarginLookup, isSupplierRefund, refundNet } from "@/lib/revenue";
 import SupplierRefunds from "@/components/analytics/SupplierRefunds";
 
@@ -62,6 +63,10 @@ export default function Analytics() {
   return (
     <div>
       <PageHeader title="Analytics" subtitle="How the business is performing" />
+
+      <div className="mb-4">
+        <BackendDiagnosticsPanel autoRun intervalMs={60000} />
+      </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Revenue" value={cedi(grossRevenue)} hint={`Net ${cedi(netProfit)} after cost`} />

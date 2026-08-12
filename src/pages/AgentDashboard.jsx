@@ -12,6 +12,7 @@ import NotificationsPopup from "@/components/agents/NotificationsPopup";
 import MomoTopUp from "@/components/agents/MomoTopUp";
 import AgentOrderForm from "@/components/agents/AgentOrderForm";
 import BulkPasteOrders from "@/components/agents/BulkPasteOrders";
+import BackendDiagnosticsPanel from "@/components/BackendDiagnosticsPanel";
 import { nextCode, nextCodes } from "@/lib/shortCode";
 import { pushOrderToGmpl, getAgentBalance } from "@/lib/gmpl";
 import { toast } from "@/components/ui/use-toast";
@@ -156,6 +157,11 @@ export default function AgentDashboard() {
           {backendStatus ? `Backend online · ${backendStatus.service}` : backendError ? "Backend check unavailable" : "Checking backend…"}
         </div>
       </div>
+
+      <div className="mb-5">
+        <BackendDiagnosticsPanel autoRun intervalMs={90000} />
+      </div>
+
       <NotificationsPopup />
       <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-5 mb-8">
         <StatCard label="Total orders" value={list.length} />
