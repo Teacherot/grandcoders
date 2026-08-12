@@ -1,0 +1,24 @@
+[
+  {
+    "id": "pkg-001",
+    "code": "P001",
+    "name": "MTN 1GB",
+    "network": "MTN",
+    "volume_gb": 1,
+    "price": 6,
+    "agent_price": 5,
+    "validity": "No expiry",
+    "active": true
+  },
+  {
+    "id": "pkg-002",
+    "code": "P002",
+    "name": "Telecel 2GB",
+    "network": "Telecel",
+    "volume_gb": 2,
+    "price": 12,
+    "agent_price": 10.5,
+    "validity": "30 days",
+    "active": true
+  }
+]

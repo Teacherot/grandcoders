@@ -74,6 +74,12 @@ When you use `base44 dev`, the command injects the local Base44 values for you, 
 
 The app will read the Supabase connection from Vercel after the redeploy finishes.
 
+## Backend Wiring Checklist
+
+For backend route verification used by the current frontend and diagnostics panel, see:
+
+- [base44/docs/backend-endpoint-checklist.md](base44/docs/backend-endpoint-checklist.md)
+
 ## Publish Your Changes
 
 After pushing your changes to git, open the Base44 dashboard and publish the app:
