@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { format } from "date-fns";
 import { Plus, Trash2, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,10 @@ export default function Orders() {
   const [exStatus, setExStatus] = useState("pending");
   const [expanded, setExpanded] = useState(null);
   const [showArchived, setShowArchived] = useState(false);
+
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   const [lookupsLoaded, setLookupsLoaded] = useState(false);
   const ensureFormLookups = () => {
@@ -75,10 +79,31 @@ export default function Orders() {
 
   const selCls = "h-9 rounded-md border border-input bg-card px-3 text-sm text-foreground";
 
-  const rows = (orders || []).filter((o) => {
-    const matchQ = !q || [o.code, o.reference, o.customer_name, o.recipient_number, o.package_name, o.agent_name].join(" ").toLowerCase().includes(q.toLowerCase());
-    return matchQ && (filter === "all" || o.status === filter) && (showArchived || !o.archived);
-  });
+  // Filtered rows based on search, status tab, and archive toggle
+  const filteredRows = useMemo(() => {
+    return (orders || []).filter((o) => {
+      const matchQ = !q || [o.code, o.reference, o.customer_name, o.recipient_number, o.package_name, o.agent_name].join(" ").toLowerCase().includes(q.toLowerCase());
+      return matchQ && (filter === "all" || o.status === filter) && (showArchived || !o.archived);
+    });
+  }, [orders, q, filter, showArchived]);
+
+  // Calculate pagination properties
+  const totalPages = Math.ceil(filteredRows.length / itemsPerPage) || 1;
+
+  const paginatedRows = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return filteredRows.slice(start, start + itemsPerPage);
+  }, [filteredRows, currentPage]);
+
+  const handleSearchChange = (e) => {
+    setQ(e.target.value);
+    setCurrentPage(1); // Reset to page 1 on new search query
+  };
+
+  const handleFilterChange = (val) => {
+    setFilter(val);
+    setCurrentPage(1); // Reset to page 1 on status tab filter change
+  };
 
   return (
     <div>
@@ -89,8 +114,8 @@ export default function Orders() {
       />
 
       <div className="flex flex-wrap gap-3 mb-5">
-        <Input className="max-w-xs" placeholder="Search reference, number, customer, agent…" value={q} onChange={(e) => setQ(e.target.value)} />
-        <Select value={filter} onValueChange={setFilter}>
+        <Input className="max-w-xs" placeholder="Search reference, number, customer, agent…" value={q} onChange={handleSearchChange} />
+        <Select value={filter} onValueChange={handleFilterChange}>
           <SelectTrigger className="w-[160px] h-9 capitalize">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
@@ -119,19 +144,19 @@ export default function Orders() {
             <option value="failed">Failed</option>
             <option value="cancelled">Cancelled</option>
           </select>
-          <Button variant={showArchived ? "default" : "outline"} onClick={() => setShowArchived((v) => !v)}>{showArchived ? "Showing archived" : "Show archived"}</Button>
+          <Button variant={showArchived ? "default" : "outline"} onClick={() => { setShowArchived((v) => !v); setCurrentPage(1); }}>{showArchived ? "Showing archived" : "Show archived"}</Button>
           <Button variant="outline" onClick={exportOrders}>Export Excel</Button>
         </div>
       </div>
 
       {!orders ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
-      ) : rows.length === 0 ? (
+      ) : filteredRows.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border bg-card p-16 text-center text-sm text-muted-foreground">No orders here yet.</div>
       ) : (
         <>
           <div className="md:hidden space-y-3">
-            {rows.map((o) => (
+            {paginatedRows.map((o) => (
               <div key={o.id} className="rounded-2xl border border-border bg-card shadow-sm p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
@@ -181,7 +206,7 @@ export default function Orders() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {rows.map((o) => (
+                {paginatedRows.map((o) => (
                   <React.Fragment key={o.id}>
                     <tr
                       className={`hover:bg-muted/40 cursor-pointer transition-colors ${expanded === o.id ? "bg-muted/40" : ""}`}
@@ -219,6 +244,37 @@ export default function Orders() {
                 ))}
               </tbody>
             </table>
+          </div>
+
+          {/* Pagination Footer Controls */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem', padding: '0 0.5rem' }}>
+            <span className="text-sm text-muted-foreground">
+              Showing {paginatedRows.length ? (currentPage - 1) * itemsPerPage + 1 : 0} to {Math.min(currentPage * itemsPerPage, filteredRows.length)} of {filteredRows.length} entries
+            </span>
+            
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+              <Button 
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+              >
+                Previous
+              </Button>
+              
+              <span className="text-sm text-muted-foreground">
+                Page {currentPage} of {totalPages}
+              </span>
+              
+              <Button 
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                disabled={currentPage === totalPages || totalPages === 0}
+              >
+                Next
+              </Button>
+            </div>
           </div>
         </>
       )}
