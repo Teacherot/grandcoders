@@ -20,7 +20,7 @@ export default function StoreCustomise({ agent, onSave }) {
       store_slug: agent.store_slug || slug(agent.full_name),
       store_bio: agent.store_bio || "",
       store_notice: agent.store_notice || "",
-      store_theme: agent.store_theme || "hsl(var(--foreground))",
+      store_theme: agent.store_theme || "#000000",
       store_active: agent.store_active !== false,
       logo_url: agent.logo_url || "",
     });
@@ -48,7 +48,15 @@ export default function StoreCustomise({ agent, onSave }) {
         <div><Label>Store link (slug)</Label><Input value={form.store_slug || ""} onChange={(e) => set("store_slug", slug(e.target.value))} /></div>
         <div><Label>Store description</Label><Textarea rows={3} value={form.store_bio || ""} onChange={(e) => set("store_bio", e.target.value)} placeholder="Describe your store, what you offer, delivery speed, etc." /></div>
         <div><Label>Store notice</Label><Textarea rows={2} value={form.store_notice || ""} onChange={(e) => set("store_notice", e.target.value)} placeholder="Show a notice on your store, e.g. 'MTN deliveries may take up to 30 mins today.'" /></div>
-        <div><Label>Theme colour</Label><input type="color" value={form.store_theme || "hsl(var(--foreground))"} onChange={(e) => set("store_theme", e.target.value)} className="h-10 w-16 rounded border border-input bg-card" /></div>
+        <div>
+          <Label>Theme colour</Label>
+          <input
+            type="color"
+            value={form.store_theme && form.store_theme.startsWith('#') ? form.store_theme : '#000000'}
+            onChange={(e) => set("store_theme", e.target.value)}
+            className="h-10 w-16 rounded border border-input bg-card cursor-pointer"
+          />
+        </div>
         <div><Label>Logo URL (optional)</Label><Input value={form.logo_url || ""} onChange={(e) => set("logo_url", e.target.value)} /></div>
         {paused ? (
           <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/40 dark:border-amber-900 p-3 text-sm text-amber-700 dark:text-amber-400">
